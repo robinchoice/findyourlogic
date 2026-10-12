@@ -31,11 +31,14 @@
     {/each}
   </nav>
 
-  {#if badges.newMatches && badges.newMatchCombo}
+  {#if badges.newMatchCombo}
     <a href="/matches" class="card hit row">
       <span class="spark" aria-hidden="true">✨</span>
       <span class="grow">
-        <b>{t().newMatchHint(badges.newMatches, badges.newMatchCombo.map((trait) => trait.label).join(' × '))}</b>
+        <b>{t().newMatchHint(
+            badges.newMatchCombo.count,
+            badges.newMatchCombo.traits.map((trait) => trait.label).join(' × '),
+          )}</b>
         <span class="small muted block">{t().newMatchSub}</span>
       </span>
       <span class="chip">{t().look}</span>

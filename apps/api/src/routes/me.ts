@@ -115,7 +115,7 @@ export const meRoutes = new Hono<AppEnv>()
     const badges: Badges = {
       requests: open!.n,
       newMatches: matches.newIds.length,
-      newMatchCombo: matches.combos.find((combo) => combo.isNew)?.traits ?? null,
+      newMatchCombo: matches.combos.find((combo) => combo.isNew) ?? null,
       unread: unread!.n,
       invitations: invitations!.n,
     };

@@ -23,6 +23,8 @@
       return;
     }
     ready = true;
+    // afterNavigate ran before the login state was known
+    refreshBadges();
     if (!auth.user.onboarded && page.url.pathname !== '/welcome') {
       goto(`/welcome?next=${encodeURIComponent(page.url.pathname + page.url.search)}`, { replaceState: true });
     }

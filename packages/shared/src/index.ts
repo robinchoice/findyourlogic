@@ -254,7 +254,8 @@ export type DirectMessage = { id: string; mine: boolean; body: string; createdAt
 export type Badges = {
   requests: number;
   newMatches: number;
-  newMatchCombo: Trait[] | null;
+  // The combination the board's hint names
+  newMatchCombo: Combo | null;
   unread: number;
   invitations: number;
 };
