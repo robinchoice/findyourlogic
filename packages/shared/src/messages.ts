@@ -14,6 +14,7 @@ const de = {
   feedbackTooShort: 'Schreib bitte mindestens 5 Zeichen.',
   invalidImage: 'Der Screenshot muss ein PNG oder JPEG sein.',
   emailTaken: 'Diese E-Mail-Adresse gehört schon zu einem anderen Konto.',
+  signupsClosed: 'findyourlogic ist noch geschlossen. Neue Konten gibt es bald.',
   nostrInvalid: 'Die Nostr-Anmeldung ist ungültig oder abgelaufen. Versuch es noch einmal.',
   nostrTaken: 'Dieser Nostr-Schlüssel gehört schon zu einem anderen Konto.',
   nostrOtherKey: 'Mit deinem Konto ist schon ein anderer Nostr-Schlüssel verbunden.',
@@ -89,6 +90,7 @@ const de = {
   nostrFailed: 'Die Anmeldung mit Nostr hat nicht geklappt.',
   nostrLinked: 'Dein Nostr-Schlüssel ist jetzt mit dem Konto verbunden.',
   emailForLink: 'E-Mail für einen Anmeldelink',
+  signupsClosedHint: 'Noch geschlossen: Anmelden können nur Konten, die es schon gibt. Neue Konten gibt es bald.',
   login: 'Anmeldung',
 
   // Navigation
@@ -353,6 +355,7 @@ const en: Messages = {
   feedbackTooShort: 'Please write at least 5 characters.',
   invalidImage: 'The screenshot must be a PNG or JPEG.',
   emailTaken: 'This email address already belongs to another account.',
+  signupsClosed: 'findyourlogic is still closed. New accounts are coming soon.',
   nostrInvalid: 'The Nostr login is invalid or has expired. Please try again.',
   nostrTaken: 'This Nostr key already belongs to another account.',
   nostrOtherKey: 'Another Nostr key is already linked to your account.',
@@ -425,6 +428,7 @@ const en: Messages = {
   nostrFailed: 'Logging in with Nostr did not work.',
   nostrLinked: 'Your Nostr key is now linked to this account.',
   emailForLink: 'Email for a login link',
+  signupsClosedHint: 'Still closed: only existing accounts can log in. New accounts are coming soon.',
   login: 'Login',
 
   navRequests: 'Requests',

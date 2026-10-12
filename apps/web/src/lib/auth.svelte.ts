@@ -2,12 +2,16 @@ import type { User } from '@app/shared';
 import { api } from './api';
 import { forgetKey, signLogin } from './nostr';
 
-export const auth = $state({ user: null as User | null });
+export const auth = $state({ user: null as User | null, signupsOpen: true });
 
 // Pages that depend on the login call this on mount. The verify page doesn't,
 // so a stale "logged out" answer can't race its fresh session.
 export async function checkAuth() {
-  auth.user = (await api.get<{ user: User | null }>('/auth/me', true).catch(() => ({ user: null }))).user;
+  const res = await api
+    .get<{ user: User | null; signupsOpen: boolean }>('/auth/me', true)
+    .catch(() => ({ user: null, signupsOpen: true }));
+  auth.user = res.user;
+  auth.signupsOpen = res.signupsOpen;
 }
 
 export function sendMagicLink(email: string, next: string | null) {

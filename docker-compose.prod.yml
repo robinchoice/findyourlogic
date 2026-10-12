@@ -21,6 +21,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://app:${POSTGRES_PASSWORD}@postgres:5432/app
       - APP_URL=${APP_URL}
+      - SIGNUPS_OPEN=${SIGNUPS_OPEN:-false}
       - SMTP_HOST=${SMTP_HOST:-}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USER=${SMTP_USER:-}

@@ -273,3 +273,28 @@ test('deleting the account removes it with its traits', async () => {
   const other = await newUser('Other');
   expect((await call('GET', `/bubbles/${b.id}`, other))[1].bubble.members).toBe(0);
 });
+
+test('closed signups keep new people out and let existing accounts in', async () => {
+  process.env.SIGNUPS_OPEN = 'false';
+  try {
+    const stranger = `test-${crypto.randomUUID()}@example.com`;
+    expect((await call('POST', '/auth/magic-link', null, { email: stranger }))[0]).toBe(200);
+    const mailed = () => log.mock.calls.some((args) => String(args[0]).startsWith(`[mail] To ${stranger}`));
+    expect(mailed()).toBe(false);
+    expect((await call('POST', '/auth/nostr', null, { event: await nostrEvent(generateSecretKey()) }))[0]).toBe(403);
+    expect((await call('GET', '/auth/me'))[1].signupsOpen).toBe(false);
+
+    const known = `test-${crypto.randomUUID()}@example.com`;
+    await db.insert(users).values({ email: known, name: 'Known' });
+    await call('POST', '/auth/magic-link', null, { email: known });
+    const token = log.mock.calls
+      .map((args) => String(args[0]))
+      .findLast((line) => line.startsWith(`[mail] To ${known}`))!
+      .match(/token=([0-9a-f]+)/)![1];
+    const [status, verified] = await call('POST', '/auth/verify', null, { token });
+    expect(status).toBe(200);
+    expect(verified.user.email).toBe(known);
+  } finally {
+    delete process.env.SIGNUPS_OPEN;
+  }
+});

@@ -53,6 +53,7 @@
   <Hero />
   <h1>{t().logIn}</h1>
   <p class="muted center">{t().loginIntro}</p>
+  {#if !auth.signupsOpen}<p class="card small closed">{t().signupsClosedHint}</p>{/if}
   <Button variant="nostr" block loading={signing} onclick={withNostr}>
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"
       ><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21l2-7.5L2 9h7z" /></svg
@@ -94,6 +95,9 @@
   h1,
   .center {
     text-align: center;
+  }
+  .closed {
+    border-color: var(--needs-bg);
   }
   .ways {
     gap: 8px;

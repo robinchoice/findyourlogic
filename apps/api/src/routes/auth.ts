@@ -40,15 +40,27 @@ const mailsPerIp = rateLimit('mails-per-ip', 20, 60 * MINUTE);
 const codeChecksPerIp = rateLimit('code-checks-per-ip', 30, 15 * MINUTE);
 const nostrPerIp = rateLimit('nostr-per-ip', 30, 15 * MINUTE);
 
-// The first login creates the account. The no-op update lets RETURNING
-// yield existing users too.
+// SIGNUPS_OPEN=false closes the app to new accounts, existing ones still log in
+const signupsOpen = () => process.env.SIGNUPS_OPEN !== 'false';
+
+async function userExists(db: Database, column: typeof users.email | typeof users.npub, value: string) {
+  const [row] = await db.select({ id: users.id }).from(users).where(eq(column, value));
+  return !!row;
+}
+
+// The first login creates the account, unless signups are closed. The no-op
+// update lets RETURNING yield existing users too.
 async function userByEmail(db: Database, email: string) {
+  if (!signupsOpen()) {
+    const [existing] = await db.select(userColumns).from(users).where(eq(users.email, email));
+    return existing;
+  }
   const [user] = await db
     .insert(users)
     .values({ email, name: email.split('@')[0]! })
     .onConflictDoUpdate({ target: users.email, set: { email } })
     .returning(userColumns);
-  return user!;
+  return user;
 }
 
 async function startSession(db: Database, userId: string, days: number) {
@@ -68,6 +80,8 @@ export const authRoutes = new Hono<AppEnv>()
   .post('/magic-link', validJson(magicLinkSchema), async (c) => {
     const { email, next } = c.req.valid('json');
     if (!(await mailsPerIp.hit(c, clientIp(c))) || !(await mailsPerAddress.hit(c, email))) return tooManyRequests(c);
+    // Same answer either way, so the form doesn't reveal which addresses have an account
+    if (!signupsOpen() && !(await userExists(c.get('db'), users.email, email))) return c.json({ ok: true });
 
     const token = generateToken();
     await c
@@ -113,6 +127,7 @@ export const authRoutes = new Hono<AppEnv>()
       if (!user) return c.json({ error: t(c).linkExpired }, 400);
     } else {
       user = await userByEmail(db, link.email);
+      if (!user) return c.json({ error: t(c).signupsClosed }, 403);
     }
     setSessionCookie(c, await startSession(db, user.id, SESSION_DAYS));
     return c.json({ user: toUser(user) });
@@ -185,6 +200,7 @@ export const authRoutes = new Hono<AppEnv>()
     }
 
     let user = owner;
+    if (!user && !signupsOpen()) return c.json({ error: t(c).signupsClosed }, 403);
     if (!user)
       [user] = await db
         .insert(users)
@@ -198,6 +214,7 @@ export const authRoutes = new Hono<AppEnv>()
   .post('/code', validJson(loginCodeSchema), async (c) => {
     const { email } = c.req.valid('json');
     if (!(await mailsPerIp.hit(c, clientIp(c))) || !(await mailsPerAddress.hit(c, email))) return tooManyRequests(c);
+    if (!signupsOpen() && !(await userExists(c.get('db'), users.email, email))) return c.json({ ok: true });
 
     const code = String(crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000).padStart(6, '0');
     await c
@@ -243,6 +260,7 @@ export const authRoutes = new Hono<AppEnv>()
     if (!used) return c.json({ error: t(c).codeWrong }, 400);
 
     const user = await userByEmail(db, email);
+    if (!user) return c.json({ error: t(c).signupsClosed }, 403);
     return c.json({ user: toUser(user), token: await startSession(db, user.id, APP_SESSION_DAYS) });
   })
 
@@ -257,7 +275,7 @@ export const authRoutes = new Hono<AppEnv>()
     return c.json({ ok: true });
   })
 
-  .get('/me', async (c) => c.json({ user: await currentUser(c) }))
+  .get('/me', async (c) => c.json({ user: await currentUser(c), signupsOpen: signupsOpen() }))
 
   .patch('/me', requireAuth, validJson(updateMeSchema), async (c) => {
     const [user] = await c
