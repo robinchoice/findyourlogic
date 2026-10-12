@@ -6,6 +6,7 @@
   import { auth, checkAuth, nostrLogin, sendMagicLink } from '$lib/auth.svelte';
   import Button from '$lib/components/Button.svelte';
   import Hero from '$lib/components/Hero.svelte';
+  import NostrDialog from '$lib/components/NostrDialog.svelte';
   import { t } from '$lib/i18n';
   import { toastError } from '$lib/toast.svelte';
 
@@ -38,7 +39,7 @@
   async function withNostr() {
     signing = true;
     try {
-      await nostrLogin({ title: t().nostrDialogTitle, description: t().nostrDialogText });
+      await nostrLogin();
       goto(next ?? '/requests', { replaceState: true });
     } catch (err) {
       // Closing the dialog is no error. API errors already showed as a toast.
@@ -82,6 +83,7 @@
       <Button type="submit" variant="secondary" block {loading}>{t().sendLink}</Button>
     </form>
   {/if}
+  <NostrDialog />
 </main>
 
 <style>

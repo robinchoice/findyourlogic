@@ -2,7 +2,7 @@
 
 ## Zweck & Links
 
-- Bubbles (Gruppen, die es schon gibt: Stammtisch, Telegram, Nostr-Gruppe) fragen andere Bubbles an und reden in kleinen Runden nach festen Spielregeln (Sichten, Fragen, Zusammenfassen). Dazu Treffer: Leute mit 3 oder mehr gemeinsamen Merkmalen (Bubbles und Interessen), nur wer auffindbar ist. Login per Magic Link oder Nostr (nostr-login).
+- Bubbles (Gruppen, die es schon gibt: Stammtisch, Telegram, Nostr-Gruppe) fragen andere Bubbles an und reden in kleinen Runden nach festen Spielregeln (Sichten, Fragen, Zusammenfassen). Dazu Treffer: Leute mit 3 oder mehr gemeinsamen Merkmalen (Bubbles und Interessen), nur wer auffindbar ist. Login per Magic Link oder Nostr (eigener Dialog in `apps/web/src/lib/nostr.svelte.ts`: Browser-Erweiterung per NIP-07, Signer-App per NIP-46 mit nostrconnect-QR).
 - Live: https://findyourlogic.pleasance.org, Coolify-Projekt `pleasance-findyourlogic`, Ressource `findyourlogic`.
 - Vorlage: `robinchoice/starter`. Mockups (Fassung 2) waren die Vorlage für Version 1.
 
@@ -17,8 +17,8 @@
 
 ## Fallen
 
-- nostr-login ist gepatcht (`patches/`, `patchedDependencies` in `package.json`): nsec.app und `relay.nsec.app` sind seit Mitte 2026 tot, nostr-login wartete sonst ewig auf sie. Der Patch nimmt nsec.app aus der Liste, setzt `wss://nos.lol/` als Pairing-Relay und ersetzt das `eval` im gebündelten tseep. Neue Schlüssel entstehen im Browser („local signup“). Bei einem neuen nostr-login-Release den Patch neu machen (`bun patch nostr-login`).
-- Die Styles des nostr-login-Dialogs stehen als Hashes in `style-src` in `apps/web/svelte.config.js`. Der Dev-Server erlaubt Inline-Styles, nur der Browser-Test „a browser extension logs in with Nostr“ prüft die Hashes. Ändert sich nostr-login, schlägt er fehl und nennt den fehlenden Hash, der dann in die Liste kommt.
+- Die Signer-App antwortet nur über die Relays in `RELAYS` (`apps/web/src/lib/nostr.svelte.ts`), die zweite Kopie steht in `connect-src` in `apps/web/svelte.config.js`. Neue Relays in beide Listen. `switch_relays` ist aus, sonst wollte der Signer auf Relays wechseln, die die CSP blockt. Der Browser-Test deckt nur NIP-07 ab, NIP-46 braucht echte Relays und läuft nicht in der CI.
+- Schlüssel werden nicht mehr im Browser angelegt und nirgends gespeichert: Nach dem Signieren zählt nur die Session. Beim Abmelden räumt `forgetKey` die alten `__nostrlogin*`-Einträge von nostr-login weg (bis 2026-10 im Einsatz).
 - Der Nostr-Login ist ein NIP-98-Event (Kind 27235) mit Challenge aus `/auth/nostr/challenge` und `u` = `APP_URL/api/v1/auth/nostr`. Stimmt `APP_URL` nicht mit der Adresse im Browser überein, scheitert jeder Nostr-Login mit 400.
 - Live ist `SIGNUPS_OPEN=false` (Coolify, Standard im Compose): Anmelden können nur Konten, die es schon gibt, Magic Links gehen nur an bekannte Adressen, die Login-Seite zeigt einen Hinweis. Öffnen mit `SIGNUPS_OPEN=true` in Coolify und neu deployen.
 - Ein Konto hat E-Mail, npub oder beides (`users.email` ist nullable). Mit Session verknüpft `/auth/nostr` den Schlüssel mit dem Konto, `/auth/me/email` bestätigt eine Adresse per Link (`magic_links.user_id`).
@@ -28,7 +28,7 @@
 ## Abweichungen vom Standard
 
 - Keine App: `apps/mobile`, `mobile.yml` und `standards/` sind gelöscht.
-- CSP weiter als im starter, für nostr-login: `connect-src` mit `https:` und `wss:` (Relays, NIP-05), `img-src` mit `https:` (Profilbilder), `frame-src` für nsec.app und zwei Style-Hashes.
+- CSP weiter als im starter: `connect-src` mit den zwei Relays für den Nostr-Login per Signer-App.
 - `z.config({ jitless: true })` in `packages/shared`: zod prüft sonst per `eval`, ob es Parser kompilieren darf, und die CSP meldet das als Fehler.
 
 ## Konventionen

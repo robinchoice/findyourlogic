@@ -2,7 +2,6 @@ import { createHash, randomBytes } from 'node:crypto';
 import { expect, type Page, test } from '@playwright/test';
 import { finalizeEvent, generateSecretKey, getPublicKey, type UnsignedEvent } from 'nostr-tools/pure';
 import postgres from 'postgres';
-import config from '../svelte.config.js';
 
 const sql = postgres(process.env.DATABASE_URL!, { connection: { timezone: 'UTC' }, onnotice: () => {} });
 test.afterAll(() => sql.end());
@@ -44,25 +43,7 @@ test('a browser extension logs in with Nostr', async ({ page }) => {
 
   await Promise.all([page.waitForResponse('**/api/v1/auth/me'), page.goto('/login')]);
   await page.getByRole('button', { name: 'Mit Nostr anmelden' }).click();
-  await page.getByRole('button', { name: 'Log in' }).click();
-
-  // The dev server allows inline styles, production only these hashes. A new
-  // nostr-login version brings new ones, svelte.config.js needs them.
-  const styles = await page.evaluate(() => {
-    const texts: string[] = [];
-    const walk = (root: Document | ShadowRoot) => {
-      for (const style of root.querySelectorAll('style')) texts.push(style.textContent ?? '');
-      for (const el of root.querySelectorAll('*')) if (el.shadowRoot) walk(el.shadowRoot);
-    };
-    walk(document.querySelector('nl-auth')!.shadowRoot!);
-    return texts;
-  });
-  expect(styles.length).toBeGreaterThan(0);
-  const allowed = config.kit!.csp!.directives!['style-src']!;
-  for (const style of styles)
-    expect(allowed).toContain(`sha256-${createHash('sha256').update(style).digest('base64')}`);
-
-  await page.getByRole('button', { name: 'With extension' }).click();
+  await page.getByRole('button', { name: 'Browser-Erweiterung (Alby, nos2x)' }).click();
 
   await expect(page).toHaveURL(/\/welcome/);
   await expect(page.getByRole('heading', { name: 'Was macht dich aus?' })).toBeVisible();

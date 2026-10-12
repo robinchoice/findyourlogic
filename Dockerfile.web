@@ -2,7 +2,6 @@ FROM oven/bun:1-slim AS build
 WORKDIR /app
 
 COPY package.json bun.lock tsconfig.json ./
-COPY patches patches
 COPY packages/shared/package.json packages/shared/
 COPY packages/db/package.json packages/db/
 COPY apps/api/package.json apps/api/

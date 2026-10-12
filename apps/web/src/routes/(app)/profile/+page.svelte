@@ -4,6 +4,7 @@
   import { api } from '$lib/api';
   import { addEmail, auth, deleteAccount, nostrLogin, updateMe } from '$lib/auth.svelte';
   import Button from '$lib/components/Button.svelte';
+  import NostrDialog from '$lib/components/NostrDialog.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import TraitPicker from '$lib/components/TraitPicker.svelte';
   import { t } from '$lib/i18n';
@@ -46,7 +47,7 @@
 
   async function linkNostr() {
     try {
-      await nostrLogin({ title: t().nostrDialogTitle, description: t().nostrDialogText });
+      await nostrLogin();
       toast(t().nostrLinked);
     } catch {
       // Closing the dialog is no error, API errors showed as a toast
@@ -118,6 +119,7 @@
     </div>
   </div>
 {/if}
+<NostrDialog />
 
 <style>
   .npub {

@@ -1,6 +1,6 @@
 import type { User } from '@app/shared';
 import { api } from './api';
-import { forgetKey, signLogin } from './nostr';
+import { forgetKey, signLogin } from './nostr.svelte';
 
 export const auth = $state({ user: null as User | null, signupsOpen: true });
 
@@ -24,8 +24,8 @@ export async function verify(token: string) {
 }
 
 // Logs in with the key, or links it to the account that is logged in
-export async function nostrLogin(texts: { title: string; description: string }) {
-  const event = await signLogin(texts);
+export async function nostrLogin() {
+  const event = await signLogin();
   auth.user = (await api.post<{ user: User }>('/auth/nostr', { event })).user;
 }
 
@@ -36,7 +36,7 @@ export async function addEmail(email: string) {
 export async function logout() {
   await api.post('/auth/logout');
   auth.user = null;
-  await forgetKey();
+  forgetKey();
 }
 
 export async function updateMe(changes: { name?: string; discoverable?: boolean }) {
@@ -46,5 +46,5 @@ export async function updateMe(changes: { name?: string; discoverable?: boolean 
 export async function deleteAccount() {
   await api.delete('/auth/me');
   auth.user = null;
-  await forgetKey();
+  forgetKey();
 }
