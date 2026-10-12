@@ -74,17 +74,19 @@ function issue(report: Report) {
   };
 }
 
-// Answering the mail reaches the tester.
+// Answering the mail reaches the tester, if they have an address. Nostr-only
+// accounts are shown by their npub.
 function mail(report: Report, to: string, issueUrl: string | null, screenshot: Buffer | null) {
   const type = screenshot && imageType(screenshot);
+  const sender = `${report.user.name} <${report.user.email ?? report.user.npub}>`;
   return {
     to,
-    replyTo: `${report.user.name} <${report.user.email}>`,
+    replyTo: report.user.email ? sender : undefined,
     subject: `${report.kind === 'bug' ? 'Bug' : 'Idea'} from ${report.user.name}: ${firstLine(report.message)}`,
     text: [
       report.message,
       '--',
-      `${report.user.name} <${report.user.email}>`,
+      sender,
       ...details(report).map(([key, value]) => `${key}: ${value}`),
       issueUrl && `Issue: ${issueUrl}`,
     ]

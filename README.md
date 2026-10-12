@@ -1,4 +1,8 @@
-# starter
+# findyourlogic
+
+Bubbles fragen Bubbles, und Leute finden sich über ihre Schnittmengen. Live: https://findyourlogic.pleasance.org. Was für dieses Repo gilt, steht in `AGENTS.md`. Der Rest dieser Datei ist die README der Vorlage `robinchoice/starter`.
+
+## Vorlage
 
 Vorlage für Web- und Mobile-Prototypen: Bun, Hono, SvelteKit, Drizzle und Postgres, dazu optional eine Flutter-App gegen dieselbe API. Deutsch und Englisch mit Umschalter in der Fußzeile, Login per Magic Link (Web) oder Code (App), Feedback-Knopf mit Screenshot, Link-Vorschau, Mail über SMTP, Rate-Limit, Security-Header mit CSP, GlitchTip, PostHog, Healthcheck, CI mit Browser-Test, Dependabot, Coolify-Deploy und Screenshots nach jedem Deploy sind fertig eingebaut.
 

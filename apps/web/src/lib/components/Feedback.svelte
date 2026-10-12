@@ -199,7 +199,7 @@
           {/each}
         </dl>
       </details>
-      <p class="hint">{t().repliesTo(auth.user.email)}</p>
+      <p class="hint">{auth.user.email ? t().repliesTo(auth.user.email) : t().noReplyWithoutEmail}</p>
       <Button type="submit" loading={sending} disabled={message.trim().length < 5}>{t().send}</Button>
     </form>
   </div>

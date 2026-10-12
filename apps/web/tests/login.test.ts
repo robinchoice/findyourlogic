@@ -26,23 +26,23 @@ async function openHydrated(page: Page, path: string) {
 test('the login form sends a magic link', async ({ page }) => {
   await openHydrated(page, '/login');
   await page.getByLabel('E-Mail').fill(freshEmail());
-  await page.getByRole('button', { name: 'Login-Link senden' }).click();
+  await page.getByRole('button', { name: 'Link schicken' }).click();
   await expect(page.getByText('Check deine E-Mails')).toBeVisible();
 });
 
 test('the language button switches to English and keeps it', async ({ page }) => {
   await openHydrated(page, '/login');
   await page.getByRole('button', { name: 'English' }).click();
-  await expect(page.getByRole('heading', { name: 'Log in' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Log in', exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
   await Promise.all([page.waitForResponse('**/api/v1/auth/me'), page.reload()]);
-  await expect(page.getByRole('heading', { name: 'Log in' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Log in', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Deutsch' }).click();
   await expect(page.getByRole('heading', { name: 'Einloggen' })).toBeVisible();
 });
 
-test('a magic link opens the dashboard until logout', async ({ page }) => {
+test('a magic link opens the app until logout', async ({ page }) => {
   // Stored like the API does it: only the hash of the token
   const email = freshEmail();
   const token = randomBytes(32).toString('hex');
@@ -51,11 +51,12 @@ test('a magic link opens the dashboard until logout', async ({ page }) => {
     values (${email}, ${tokenHash}, ${new Date(Date.now() + 15 * 60_000)})`;
 
   await page.goto(`/auth/verify?token=${token}`);
-  await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: `Hallo ${email.split('@')[0]}` })).toBeVisible();
+  // New accounts start with the onboarding
+  await expect(page).toHaveURL(/\/welcome\?next=%2Frequests$/);
+  await expect(page.getByLabel('Anzeigename')).toHaveValue(email.split('@')[0]!);
 
   await page.getByRole('button', { name: 'Abmelden' }).click();
   await expect(page).toHaveURL(/\/$/);
-  await page.goto('/dashboard');
-  await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
+  await page.goto('/requests');
+  await expect(page).toHaveURL(/\/login\?next=%2Frequests$/);
 });

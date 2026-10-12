@@ -1,4 +1,5 @@
 import { sessions, users } from '@app/db';
+import type { User } from '@app/shared';
 import { and, eq, gt } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
@@ -37,15 +38,33 @@ export function setSessionCookie(c: Context, token: string) {
   });
 }
 
-export async function currentUser(c: Context<AppEnv>) {
+export const userColumns = {
+  id: users.id,
+  email: users.email,
+  npub: users.npub,
+  name: users.name,
+  discoverable: users.discoverable,
+  onboardedAt: users.onboardedAt,
+};
+
+type UserRow = Omit<User, 'onboarded'> & { onboardedAt: Date | null };
+
+export const toUser = (row: UserRow): User => ({
+  id: row.id,
+  email: row.email,
+  npub: row.npub,
+  name: row.name,
+  discoverable: row.discoverable,
+  onboarded: !!row.onboardedAt,
+});
+
+export async function currentUser(c: Context<AppEnv>): Promise<User | null> {
   const token = sessionToken(c);
   if (!token) return null;
   const db = c.get('db');
   const [row] = await db
     .select({
-      id: users.id,
-      email: users.email,
-      name: users.name,
+      ...userColumns,
       sessionId: sessions.id,
       expiresAt: sessions.expiresAt,
     })
@@ -64,7 +83,7 @@ export async function currentUser(c: Context<AppEnv>) {
       .where(eq(sessions.id, row.sessionId));
     if (getCookie(c, SESSION_COOKIE)) setSessionCookie(c, token);
   }
-  return { id: row.id, email: row.email, name: row.name };
+  return toUser(row);
 }
 
 export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {

@@ -1,5 +1,6 @@
 import type { User } from '@app/shared';
 import { api } from './api';
+import { forgetKey, signLogin } from './nostr';
 
 export const auth = $state({ user: null as User | null });
 
@@ -18,11 +19,28 @@ export async function verify(token: string) {
   auth.user = (await api.post<{ user: User }>('/auth/verify', { token }, true)).user;
 }
 
+// Logs in with the key, or links it to the account that is logged in
+export async function nostrLogin(texts: { title: string; description: string }) {
+  const event = await signLogin(texts);
+  auth.user = (await api.post<{ user: User }>('/auth/nostr', { event })).user;
+}
+
+export async function addEmail(email: string) {
+  await api.post('/auth/me/email', { email });
+}
+
 export async function logout() {
   await api.post('/auth/logout');
   auth.user = null;
+  await forgetKey();
 }
 
-export async function updateName(name: string) {
-  auth.user = (await api.patch<{ user: User }>('/auth/me', { name })).user;
+export async function updateMe(changes: { name?: string; discoverable?: boolean }) {
+  auth.user = (await api.patch<{ user: User }>('/auth/me', changes)).user;
+}
+
+export async function deleteAccount() {
+  await api.delete('/auth/me');
+  auth.user = null;
+  await forgetKey();
 }

@@ -3,6 +3,8 @@
 
   let {
     variant = 'primary',
+    small = false,
+    block = false,
     type = 'button',
     loading = false,
     disabled = false,
@@ -10,7 +12,9 @@
     onclick,
     children,
   }: {
-    variant?: 'primary' | 'secondary';
+    variant?: 'primary' | 'secondary' | 'nostr';
+    small?: boolean;
+    block?: boolean;
     type?: 'button' | 'submit';
     loading?: boolean;
     disabled?: boolean;
@@ -21,11 +25,11 @@
 </script>
 
 {#if href}
-  <a {href} class="btn {variant}">{@render children()}</a>
+  <a {href} class="btn {variant}" class:small class:block>{@render children()}</a>
 {:else}
-  <button {type} class="btn {variant}" disabled={disabled || loading} {onclick}>
+  <button {type} class="btn {variant}" class:small class:block disabled={disabled || loading} {onclick}>
     {#if loading}<span class="spinner"></span>{/if}
-    <span class:hidden={loading}>{@render children()}</span>
+    <span class="label" class:hidden={loading}>{@render children()}</span>
   </button>
 {/if}
 
@@ -35,10 +39,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     height: 40px;
     padding: 0 1.1rem;
     border: 1px solid transparent;
-    border-radius: var(--radius);
+    border-radius: 999px;
     font: inherit;
     font-weight: 600;
     text-decoration: none;
@@ -51,6 +56,18 @@
   .primary {
     background: var(--gradient);
     color: var(--text);
+  }
+  .small {
+    height: 32px;
+    padding: 0 0.8rem;
+    font-size: 13px;
+  }
+  .block {
+    width: 100%;
+  }
+  .nostr {
+    background: #7b3fe4;
+    color: #fff;
   }
   .secondary {
     background: var(--surface);
@@ -65,6 +82,11 @@
     border-right-color: transparent;
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
+  }
+  .label {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
   }
   .hidden {
     visibility: hidden;

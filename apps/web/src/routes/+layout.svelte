@@ -4,6 +4,7 @@
   import PleasanceFooter from '$lib/components/PleasanceFooter.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
   import { t } from '$lib/i18n';
+  import '$lib/styles.css';
 
   let { children } = $props();
 
@@ -65,15 +66,17 @@
     --bg: #f4f4f1;
     --surface: #fff;
     --border: rgb(23 23 26 / 0.16);
+    --line: rgb(23 23 26 / 0.09);
     --text: #17171a;
     --muted: #5e5e66;
+    --faint: #85858c;
     --needs: #8f5a0c;
     --needs-bg: #f4b44c;
     --new: #1d6a44;
     --new-bg: #6ccf8e;
     --error: #b3262d;
     --error-bg: #f2545b;
-    --radius: 8px;
+    --radius: 10px;
     --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
     --spectrum: linear-gradient(90deg, #f2545b, #fb8c45, #f2c14e, #6ccf8e, #46bfe0, #8e92f8, #c39bf2);
   }
@@ -84,8 +87,12 @@
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: system-ui, sans-serif;
-    line-height: 1.5;
+    font:
+      15px/1.45 system-ui,
+      -apple-system,
+      'Segoe UI',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
   :global(h1, h2) {
     font-family: var(--font-display);

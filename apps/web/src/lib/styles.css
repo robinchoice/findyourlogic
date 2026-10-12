@@ -1,0 +1,248 @@
+/* Shared building blocks of the screens, after the approved mockup (v2) */
+h1 {
+  margin: 0;
+  font-size: 30px;
+}
+h2 {
+  margin: 0;
+  font-size: 22px;
+}
+h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 750;
+  font-stretch: 80%;
+}
+p {
+  margin: 0;
+}
+.muted {
+  color: var(--muted);
+}
+.faint {
+  color: var(--faint);
+}
+.small {
+  font-size: 13px;
+}
+.caps {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.wrap {
+  flex-wrap: wrap;
+}
+.stack {
+  display: grid;
+  gap: 12px;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+a.card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+a.card:hover {
+  border-color: var(--border);
+  transform: translateY(-1px);
+}
+.chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+button.chip {
+  cursor: pointer;
+}
+.chip.on {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.bub {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  font-weight: 650;
+}
+.bub::before {
+  content: "";
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent);
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.badge {
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--needs-bg);
+  color: #17171a;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.badge.new {
+  background: var(--new-bg);
+}
+.progress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--line);
+}
+.progress > i {
+  display: block;
+  height: 100%;
+  background: var(--c, var(--text));
+}
+.seg {
+  display: inline-flex;
+  justify-self: start;
+  flex-wrap: wrap;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.seg button,
+.seg a {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.seg .on {
+  background: var(--text);
+  color: var(--bg);
+}
+.field {
+  display: grid;
+  gap: 6px;
+}
+.field > label,
+.field > .label {
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+textarea.input {
+  min-height: 90px;
+  resize: vertical;
+}
+.input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.opt {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.opt.on {
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--text);
+}
+.back {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-self: start;
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+}
+.hr {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--line);
+}
+.page {
+  display: grid;
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 28px 60px;
+}
+.textbtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+@media (max-width: 700px) {
+  .page {
+    padding: 18px 16px 30px;
+  }
+  h1 {
+    font-size: 26px;
+  }
+}

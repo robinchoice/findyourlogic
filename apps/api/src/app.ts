@@ -6,7 +6,13 @@ import { logger } from 'hono/logger';
 import { t } from './lib/i18n';
 import { captureException } from './monitoring';
 import { authRoutes } from './routes/auth';
+import { bubbleRoutes } from './routes/bubbles';
 import { feedbackRoutes } from './routes/feedback';
+import { matchRoutes } from './routes/matches';
+import { meRoutes } from './routes/me';
+import { messageRoutes } from './routes/messages';
+import { requestRoutes } from './routes/requests';
+import { roundRoutes } from './routes/rounds';
 import type { AppEnv } from './types';
 
 export function createApp(db: Database) {
@@ -33,5 +39,11 @@ export function createApp(db: Database) {
       .basePath('/api/v1')
       .route('/auth', authRoutes)
       .route('/feedback', feedbackRoutes)
+      .route('/me', meRoutes)
+      .route('/bubbles', bubbleRoutes)
+      .route('/requests', requestRoutes)
+      .route('/rounds', roundRoutes)
+      .route('/matches', matchRoutes)
+      .route('/messages', messageRoutes)
   );
 }

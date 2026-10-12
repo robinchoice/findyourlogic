@@ -1,27 +1,34 @@
-# starter
-
-Diese Datei ist zugleich die Vorlage für neue Projekte. Dort ersetzen Titel, „Zweck & Links“, die Prüf-URL unter „Deploy“ und „Fallen“ die Angaben zur Vorlage. „Konventionen“ bleibt und folgt den Änderungen hier, das Nacht-Review prüft alle Prototypen dagegen.
+# findyourlogic
 
 ## Zweck & Links
 
-- Vorlage für Web- und Mobile-Prototypen: Bun, Hono, SvelteKit, Drizzle, Postgres, optional Flutter in `apps/mobile`. Neue Projekte: README.md, „Neues Projekt“.
-- Selbst nicht deployt. Im Projekt: Live-URL `https://<slug>.pleasance.org`, ab 1.0 eine eigene Domain (README, „Live als 1.0“), Coolify-Projekt `pleasance-<slug>` oder `privat-<slug>`, Ressource `<slug>`.
+- Bubbles (Gruppen, die es schon gibt: Stammtisch, Telegram, Nostr-Gruppe) fragen andere Bubbles an und reden in kleinen Runden nach festen Spielregeln (Sichten, Fragen, Zusammenfassen). Dazu Treffer: Leute mit 3 oder mehr gemeinsamen Merkmalen (Bubbles und Interessen), nur wer auffindbar ist. Login per Magic Link oder Nostr (nostr-login).
+- Live: https://findyourlogic.pleasance.org, Coolify-Projekt `pleasance-findyourlogic`, Ressource `findyourlogic`.
+- Vorlage: `robinchoice/starter`. Mockups (Fassung 2) waren die Vorlage für Version 1.
 
 ## Checks
 
-`bun run check && bun run test && bun run build`, bei App-Änderungen zusätzlich `flutter analyze && flutter test` in `apps/mobile`. Die Browser-Tests starten API und Web auf eigenen Ports (53100, 54100). Testet ein anderer Worktree gleichzeitig, mit anderen Ports aufrufen: `TEST_API_PORT=53101 TEST_WEB_PORT=54101 bun run test`.
+`bun run check && bun run test && bun run build`. Die Browser-Tests starten API und Web auf eigenen Ports (53100, 54100). Testet ein anderer Worktree gleichzeitig, mit anderen Ports aufrufen: `TEST_API_PORT=53101 TEST_WEB_PORT=54101 bun run test`.
 
 ## Deploy
 
-- Ein Push auf `main` baut nach grüner CI die Images und deployt sie über die Coolify-API. Danach fotografiert sie die Live-Seite nach `docs/screenshots/`, committet geänderte Bilder mit `[skip ci]` und meldet den Deploy an `robinchoice/pleasance` (README, „Screenshots“). Ohne das Secret `COOLIFY_TOKEN` überspringt die CI Deploy, Screenshots und Meldung, so auch hier in der Vorlage. Ohne `PLEASANCE_DISPATCH_TOKEN` entfällt nur die Meldung.
-- App (`apps/mobile`): Ein Push auf `main` baut das Android-AAB, iOS geht nur bei einem Tag `v*` oder mit `gh workflow run mobile.yml` zu TestFlight (macOS-Minuten zählen zehnfach).
-- Prüfen: `gh run watch`. Der Deploy-Job ist erst grün, wenn `https://<slug>.pleasance.org/api/health` den Commit als `revision` meldet.
-- Nur hier in der Vorlage: `.github/workflows/standards.yml` baut `standards/` als Image `starter-site` und deployt es über das Tailnet nach https://standards.pleasance.org (Coolify VPS 3, nur aus dem Tailnet). Aus der Vorlage erzeugte Repos überspringen den Workflow und können ihn mit `standards/` löschen.
+- Ein Push auf `main` baut nach grüner CI die Images und deployt sie über die Coolify-API. Danach fotografiert sie die Live-Seite nach `docs/screenshots/`, committet geänderte Bilder mit `[skip ci]` und meldet den Deploy an `robinchoice/pleasance` (README, „Screenshots“). Ohne das Secret `COOLIFY_TOKEN` überspringt die CI Deploy, Screenshots und Meldung. Ohne `PLEASANCE_DISPATCH_TOKEN` entfällt nur die Meldung.
+- Prüfen: `gh run watch`. Der Deploy-Job ist erst grün, wenn `https://findyourlogic.pleasance.org/api/health` den Commit als `revision` meldet.
 
 ## Fallen
 
-- Was hier geändert wird, landet in jedem neuen Projekt und über das Nacht-Review als Befund in allen bestehenden. Konventionen nur ändern, wenn sie für alle Prototypen gelten.
-- `standards/` liest die Tabellen „Farbband“ und „Produktfarbe“ aus DESIGN.md: Spaltenreihenfolge und Ausschnitte im Format `1,00–1,35` beibehalten. Zeichnungen der Zeichen stehen in `SIGNS` in `standards/main.js`, ein neues Produkt bekommt dort bis dahin einen Punkt.
+- nostr-login ist gepatcht (`patches/`, `patchedDependencies` in `package.json`): nsec.app und `relay.nsec.app` sind seit Mitte 2026 tot, nostr-login wartete sonst ewig auf sie. Der Patch nimmt nsec.app aus der Liste, setzt `wss://nos.lol/` als Pairing-Relay und ersetzt das `eval` im gebündelten tseep. Neue Schlüssel entstehen im Browser („local signup“). Bei einem neuen nostr-login-Release den Patch neu machen (`bun patch nostr-login`).
+- Die Styles des nostr-login-Dialogs stehen als Hashes in `style-src` in `apps/web/svelte.config.js`. Der Dev-Server erlaubt Inline-Styles, nur der Browser-Test „a browser extension logs in with Nostr“ prüft die Hashes. Ändert sich nostr-login, schlägt er fehl und nennt den fehlenden Hash, der dann in die Liste kommt.
+- Der Nostr-Login ist ein NIP-98-Event (Kind 27235) mit Challenge aus `/auth/nostr/challenge` und `u` = `APP_URL/api/v1/auth/nostr`. Stimmt `APP_URL` nicht mit der Adresse im Browser überein, scheitert jeder Nostr-Login mit 400.
+- Ein Konto hat E-Mail, npub oder beides (`users.email` ist nullable). Mit Session verknüpft `/auth/nostr` den Schlüssel mit dem Konto, `/auth/me/email` bestätigt eine Adresse per Link (`magic_links.user_id`).
+- Treffer werden bei jedem Aufruf aus `bubble_members` (`as_trait`) und `interests` gerechnet, nur über auffindbare Konten. Personen erst ab `MIN_SHARED` (3) gemeinsamen Merkmalen, darunter nur die Anzahl. Interessen-Vorschläge zeigen fremde Interessen erst ab 3 Leuten.
+- Es werden keine Meinungen oder Haltungen gespeichert, nur Mitgliedschaften, selbst gewählte Interessen, Zusagen und Nachrichten. Neue Felder an Personen nur mit dieser Grenze.
+
+## Abweichungen vom Standard
+
+- Keine App: `apps/mobile`, `mobile.yml` und `standards/` sind gelöscht.
+- CSP weiter als im starter, für nostr-login: `connect-src` mit `https:` und `wss:` (Relays, NIP-05), `img-src` mit `https:` (Profilbilder), `frame-src` für nsec.app und zwei Style-Hashes.
+- `z.config({ jitless: true })` in `packages/shared`: zod prüft sonst per `eval`, ob es Parser kompilieren darf, und die CSP meldet das als Fehler.
 
 ## Konventionen
 
