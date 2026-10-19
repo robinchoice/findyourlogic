@@ -29,6 +29,7 @@ services:
       - EMAIL_FROM=${EMAIL_FROM:-}
       - FEEDBACK_EMAIL=${FEEDBACK_EMAIL:-}
       - FEEDBACK_GITHUB_TOKEN=${FEEDBACK_GITHUB_TOKEN:-}
+      - NOSTR_SECRET_KEY=${NOSTR_SECRET_KEY:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
     depends_on:
       postgres:

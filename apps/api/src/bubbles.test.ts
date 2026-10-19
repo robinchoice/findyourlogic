@@ -3,6 +3,7 @@ import { createDb, migrateDb, sessions, users } from '@app/db';
 import { eq } from 'drizzle-orm';
 import { finalizeEvent, generateSecretKey } from 'nostr-tools/pure';
 import { createApp } from './app';
+import * as nostr from './lib/nostr';
 import { LOGIN_KIND } from './lib/nostr';
 import { generateToken, hashToken } from './middleware/auth';
 
@@ -191,6 +192,48 @@ test('a request goes out with 3 supporters and starts once the other side is ful
   expect(done.round).toMatchObject({ phase: 'summary', videoUrl: 'https://meet.jit.si/fyl-test' });
   expect(done.round.doneAt).not.toBeNull();
   expect(done.round.messages[0]).toMatchObject({ phase: 'views', side: 'from', author: { name: 'A1' } });
+});
+
+test('a request becomes a Nostr note only if the asking side agreed', async () => {
+  const publish = spyOn(nostr, 'publishNote').mockResolvedValue();
+  const [a1, a2, a3, b1] = await Promise.all(['A1', 'A2', 'A3', 'B1'].map(newUser));
+  const asking = await bubble(a1!, 'Nostr Freiburg');
+  const asked = await bubble(b1!, 'Sparkasse Wiehre');
+  for (const u of [a2!, a3!]) await join(u, asking.token);
+
+  async function sendOut(question: string, nostrNote?: boolean) {
+    const [, created] = await call('POST', '/requests', a1, {
+      fromBubbleId: asking.id,
+      toBubbleId: asked.id,
+      question,
+      format: 'online',
+      startsAt: new Date(Date.now() + 86_400_000).toISOString(),
+      seats: 3,
+      nostrNote,
+    });
+    await call('POST', `/requests/${created.request.id}/join`, a2);
+    const [, sent] = await call('POST', `/requests/${created.request.id}/join`, a3);
+    expect(sent.request.sentAt).not.toBeNull();
+    return created.request.id as string;
+  }
+
+  // The default is off: without consent nothing is published
+  await sendOut('Was haltet ihr von Geld ohne Bank?');
+  await sendOut('Und von Geld ohne Staat, ganz ehrlich?', false);
+  expect(publish).not.toHaveBeenCalled();
+
+  const id = await sendOut('Wer darf eigentlich Geld schöpfen?', true);
+  expect(publish).toHaveBeenCalledTimes(1);
+  const [content, tags] = publish.mock.calls[0]!;
+  const url = `${process.env.APP_URL}/requests/${id}`;
+  expect(content).toBe(
+    `Nostr Freiburg ${run} fragt Sparkasse Wiehre ${run}: „Wer darf eigentlich Geld schöpfen?“\n\nZur Anfrage: ${url}`,
+  );
+  expect(tags).toEqual([
+    ['r', url],
+    ['t', 'findyourlogic'],
+  ]);
+  publish.mockRestore();
 });
 
 test('a request to a bubble that is not here yet comes with its invite link', async () => {

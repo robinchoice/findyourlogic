@@ -186,6 +186,13 @@ const de = {
   decidesTogether: (bubble: string) => `${bubble} entscheidet gemeinsam`,
   decidesTogetherText: (n: number, to: string) =>
     `Ab ${n} Zusagen aus der eigenen Bubble geht die Anfrage raus. Bis dahin sieht ${to} sie nicht.`,
+  nostrNoteOption: 'Auf Nostr ankündigen',
+  nostrNoteHint:
+    'Geht die Anfrage raus, erscheint sie öffentlich als Nostr-Note: Bubbles, Frage und Link, keine Namen. Wer zusagt, stimmt dem zu.',
+  nostrNoteNotice:
+    'Geht sie raus, erscheint sie öffentlich als Nostr-Note (Bubbles, Frage, Link). Mit deiner Zusage stimmst du zu.',
+  nostrNote: (from: string, to: string, question: string, url: string) =>
+    `${from} fragt ${to}: „${question}“\n\nZur Anfrage: ${url}`,
   imIn: 'Ich bin dabei',
   joined: 'Zugesagt',
   withdraw: 'Zusage zurückziehen',
@@ -523,6 +530,12 @@ const en: Messages = {
   decidesTogether: (bubble) => `${bubble} decides together`,
   decidesTogetherText: (n, to) =>
     `The request goes out once ${n} members of the own bubble are in. Until then ${to} doesn't see it.`,
+  nostrNoteOption: 'Announce on Nostr',
+  nostrNoteHint:
+    'Once the request goes out, it is posted publicly as a Nostr note: bubbles, question and link, no names. Whoever joins agrees to that.',
+  nostrNoteNotice:
+    'Once it goes out, it is posted publicly as a Nostr note (bubbles, question, link). By joining you agree.',
+  nostrNote: (from, to, question, url) => `${from} asks ${to}: “${question}”\n\nSee the request: ${url}`,
   imIn: "I'm in",
   joined: "You're in",
   withdraw: 'Withdraw',

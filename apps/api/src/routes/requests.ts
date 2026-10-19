@@ -4,8 +4,10 @@ import { and, asc, desc, eq, inArray, isNotNull, notInArray, sql } from 'drizzle
 import { Hono } from 'hono';
 import { inviteToken, isMember, loadRequest, myBubbleIds, requestCards } from '../lib/db';
 import { t } from '../lib/i18n';
+import { publishNote } from '../lib/nostr';
 import { validJson } from '../lib/validate';
 import { requireAuth } from '../middleware/auth';
+import { captureException } from '../monitoring';
 import type { AppEnv } from '../types';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -97,6 +99,7 @@ export const requestRoutes = new Hono<AppEnv>()
     const id = c.req.param('id');
     if (!UUID.test(id)) return c.json({ error: t(c).notFound }, 404);
     const userId = c.get('user').id;
+    let announce = false;
     const error = await c.get('db').transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
       const request = await loadRequest(tx, userId, id);
@@ -104,14 +107,28 @@ export const requestRoutes = new Hono<AppEnv>()
       if (!request.canJoin) return request.acceptedAt ? t(c).alreadyAccepted : t(c).cannotJoin;
       const side = request.canJoin;
       await tx.insert(requestParticipants).values({ requestId: id, userId, side });
-      if (side === 'from' && !request.sentAt && request.fromCount + 1 >= SUPPORTERS_NEEDED)
+      if (side === 'from' && !request.sentAt && request.fromCount + 1 >= SUPPORTERS_NEEDED) {
         await tx.update(requests).set({ sentAt: new Date() }).where(eq(requests.id, id));
+        announce = request.nostrNote;
+      }
       if (side === 'to' && request.toCount + 1 >= request.seats)
         await tx.update(requests).set({ acceptedAt: new Date() }).where(eq(requests.id, id));
       return null;
     });
     if (error) return c.json({ error }, 409);
-    return c.json({ request: await loadRequest(c.get('db'), userId, id) });
+    const request = await loadRequest(c.get('db'), userId, id);
+    // Only what the request shows anyway, no names. A failed note doesn't undo the join.
+    if (announce && request) {
+      const url = `${process.env.APP_URL}/requests/${id}`;
+      await publishNote(t(c).nostrNote(request.from.name, request.to.name, request.question, url), [
+        ['r', url],
+        ['t', 'findyourlogic'],
+      ]).catch((err) => {
+        console.error('Nostr note failed:', err);
+        captureException(err);
+      });
+    }
+    return c.json({ request });
   })
 
   // Withdrawing is possible until the round starts

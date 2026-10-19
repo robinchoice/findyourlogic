@@ -184,6 +184,8 @@ export const requests = pgTable('requests', {
   startsAt: timestamp('starts_at').notNull(),
   // Per side
   seats: integer('seats').notNull(),
+  // Opt-in of the asking side: once out, the app announces it as a Nostr note
+  nostrNote: boolean('nostr_note').default(false).notNull(),
   sentAt: timestamp('sent_at'),
   acceptedAt: timestamp('accepted_at'),
   phase: varchar('phase', { length: 12 }).default('views').notNull(),

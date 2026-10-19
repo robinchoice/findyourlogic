@@ -75,6 +75,7 @@ export async function loadRequest(db: Db, userId: string, id: string): Promise<R
   const [extra] = await db
     .select({
       details: requests.details,
+      nostrNote: requests.nostrNote,
       toMembers: sql<number>`(select count(*)::int from ${bubbleMembers} m where m.bubble_id = ${requests.toBubbleId})`,
       toInviteToken: bubbles.inviteToken,
     })
@@ -94,6 +95,7 @@ export async function loadRequest(db: Db, userId: string, id: string): Promise<R
   return {
     ...card,
     details: extra!.details,
+    nostrNote: extra!.nostrNote,
     canJoin,
     fromPeople: insider ? await people(db, id, 'from') : [],
     toPeople: insider ? await people(db, id, 'to') : [],

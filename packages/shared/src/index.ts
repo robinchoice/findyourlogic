@@ -100,6 +100,10 @@ export const feedbackSchema = z.object({
 export const MIN_SHARED = 3;
 export const SUPPORTERS_NEEDED = 3;
 
+// Signer apps answer the login QR code here (NIP-46), and request notes go
+// out here. Also in connect-src in apps/web/svelte.config.js.
+export const NOSTR_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol'];
+
 // Bubble colours, picked when a bubble is created
 export const BUBBLE_COLORS = [
   '#e8870e',
@@ -152,6 +156,7 @@ export const requestSchema = z
     place: z.string().trim().max(200).default(''),
     startsAt: z.iso.datetime({ offset: true }),
     seats: z.number().int().min(SUPPORTERS_NEEDED).max(8),
+    nostrNote: z.boolean().default(false),
   })
   .refine((r) => !!r.toBubbleId !== !!r.newBubbleName, 'pickTarget');
 
@@ -204,6 +209,8 @@ export type Person = { id: string; name: string };
 
 export type RequestDetail = RequestCard & {
   details: string;
+  // Announced as a Nostr note once it goes out
+  nostrNote: boolean;
   // Which side the current user may join, if any
   canJoin: Side | null;
   // Names only for members of either bubble

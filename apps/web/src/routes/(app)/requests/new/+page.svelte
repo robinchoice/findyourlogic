@@ -6,6 +6,7 @@
   import { api } from '$lib/api';
   import Button from '$lib/components/Button.svelte';
   import InviteLink from '$lib/components/InviteLink.svelte';
+  import Switch from '$lib/components/Switch.svelte';
   import { t } from '$lib/i18n';
   import { toast } from '$lib/toast.svelte';
 
@@ -23,6 +24,7 @@
   let place = $state('');
   let startsAt = $state('');
   let seats = $state(3);
+  let nostrNote = $state(false);
   let sending = $state(false);
   let created = $state<{ id: string; inviteToken: string | null } | null>(null);
 
@@ -76,6 +78,7 @@
         place: format === 'onsite' ? place : '',
         startsAt: new Date(startsAt).toISOString(),
         seats,
+        nostrNote,
       });
       if (res.request.inviteToken) created = res.request;
       else {
@@ -192,6 +195,14 @@
             {/each}
           </div>
         </div>
+      </div>
+
+      <div class="card row">
+        <div class="grow">
+          <b>{t().nostrNoteOption}</b>
+          <div class="small muted">{t().nostrNoteHint}</div>
+        </div>
+        <Switch on={nostrNote} label={t().nostrNoteOption} onchange={(on) => (nostrNote = on)} />
       </div>
 
       <div class="row wrap">

@@ -1,11 +1,8 @@
-import { APP_NAME } from '@app/shared';
+import { APP_NAME, NOSTR_RELAYS } from '@app/shared';
 import type { EventTemplate, VerifiedEvent } from 'nostr-tools/core';
 import { api } from './api';
 
 type Signer = { signEvent: (event: EventTemplate) => Promise<VerifiedEvent> };
-
-// Signer apps answer the QR code here (NIP-46). Also in connect-src in svelte.config.js.
-const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol'];
 
 // State of NostrDialog.svelte: pick a browser extension (NIP-07) or connect
 // a signer app with a nostrconnect:// code (NIP-46), then confirm there.
@@ -86,7 +83,7 @@ export async function pickSignerApp() {
   const clientKey = generateSecretKey();
   const uri = createNostrConnectURI({
     clientPubkey: getPublicKey(clientKey),
-    relays: RELAYS,
+    relays: NOSTR_RELAYS,
     secret: crypto.randomUUID(),
     perms: ['sign_event:27235'],
     name: APP_NAME,

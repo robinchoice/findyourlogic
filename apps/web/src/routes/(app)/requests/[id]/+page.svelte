@@ -76,6 +76,7 @@
       <div class="card stack small">
         <b>{t().decidesTogether(request.from.name)}</b>
         <span class="muted">{t().decidesTogetherText(SUPPORTERS_NEEDED, request.to.name)}</span>
+        {#if request.nostrNote}<span class="muted">{t().nostrNoteNotice}</span>{/if}
       </div>
     {/if}
 

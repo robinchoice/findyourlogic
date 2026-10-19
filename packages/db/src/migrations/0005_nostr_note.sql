@@ -1,0 +1,1 @@
+ALTER TABLE "requests" ADD COLUMN "nostr_note" boolean DEFAULT false NOT NULL;

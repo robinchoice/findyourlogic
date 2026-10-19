@@ -17,7 +17,8 @@
 
 ## Fallen
 
-- Die Signer-App antwortet nur über die Relays in `RELAYS` (`apps/web/src/lib/nostr.svelte.ts`), die zweite Kopie steht in `connect-src` in `apps/web/svelte.config.js`. Neue Relays in beide Listen. `switch_relays` ist aus, sonst wollte der Signer auf Relays wechseln, die die CSP blockt. Der Browser-Test deckt nur NIP-07 ab, NIP-46 braucht echte Relays und läuft nicht in der CI.
+- Die Signer-App antwortet nur über die Relays in `NOSTR_RELAYS` (`packages/shared`), die zweite Kopie steht in `connect-src` in `apps/web/svelte.config.js`. Neue Relays in beide Listen. `switch_relays` ist aus, sonst wollte der Signer auf Relays wechseln, die die CSP blockt. Der Browser-Test deckt nur NIP-07 ab, NIP-46 braucht echte Relays und läuft nicht in der CI.
+- Anfragen mit `nostr_note` (Schalter beim Anlegen, Standard aus) veröffentlicht die API beim Rausgehen als Kind-1-Note an `NOSTR_RELAYS`, signiert mit dem App-Schlüssel `NOSTR_SECRET_KEY` (nsec, in `~/.secrets` als `NOSTR_FINDYOURLOGIC_SECRET_KEY`). Inhalt nur Bubble-Namen, Frage und Link, keine Personen. Ohne Schlüssel landet die Note im Log. Wer zusagt, sieht den Hinweis und stimmt damit zu.
 - Schlüssel werden nicht mehr im Browser angelegt und nirgends gespeichert: Nach dem Signieren zählt nur die Session. Beim Abmelden räumt `forgetKey` die alten `__nostrlogin*`-Einträge von nostr-login weg (bis 2026-10 im Einsatz).
 - Der Nostr-Login ist ein NIP-98-Event (Kind 27235) mit Challenge aus `/auth/nostr/challenge` und `u` = `APP_URL/api/v1/auth/nostr`. Stimmt `APP_URL` nicht mit der Adresse im Browser überein, scheitert jeder Nostr-Login mit 400.
 - Live ist `SIGNUPS_OPEN=false` (Coolify, Standard im Compose): Anmelden können nur Konten, die es schon gibt, Magic Links gehen nur an bekannte Adressen, die Login-Seite zeigt einen Hinweis. Öffnen mit `SIGNUPS_OPEN=true` in Coolify und neu deployen.
