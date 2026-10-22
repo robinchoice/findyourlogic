@@ -8,7 +8,7 @@
 
 ## Checks
 
-`bun run check && bun run test && bun run build`. Die Browser-Tests starten API und Web auf eigenen Ports (53100, 54100). Testet ein anderer Worktree gleichzeitig, mit anderen Ports aufrufen: `TEST_API_PORT=53101 TEST_WEB_PORT=54101 bun run test`.
+`bun run check && bun run test && bun run build`. Die Browser-Tests bauen das Web vor dem Start und testen den Produktions-Build. API und Web laufen auf eigenen Ports (31100, 31101), unter dem ephemeren Linux-Portbereich (32768–60999). Testet ein anderer Worktree gleichzeitig, mit anderen Ports unter 32768 aufrufen: `TEST_API_PORT=31102 TEST_WEB_PORT=31103 bun run test`.
 
 ## Deploy
 

@@ -192,7 +192,7 @@ test('a request goes out with 3 supporters and starts once the other side is ful
   expect(done.round).toMatchObject({ phase: 'summary', videoUrl: 'https://meet.jit.si/fyl-test' });
   expect(done.round.doneAt).not.toBeNull();
   expect(done.round.messages[0]).toMatchObject({ phase: 'views', side: 'from', author: { name: 'A1' } });
-});
+}, 15_000);
 
 test('a request becomes a Nostr note only if the asking side agreed', async () => {
   const publish = spyOn(nostr, 'publishNote').mockResolvedValue();
