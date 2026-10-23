@@ -1,6 +1,6 @@
 import { bubbleInvitations, bubbleMembers, bubbles, requestParticipants, requests, users } from '@app/db';
 import { BUBBLE_COLORS, bubbleSchema, type Invitation, type MyBubble, matchBubbleSchema } from '@app/shared';
-import { and, count, eq, ilike, sql } from 'drizzle-orm';
+import { and, count, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { inviteToken, isMember } from '../lib/db';
 import { t } from '../lib/i18n';
@@ -220,6 +220,23 @@ export const bubbleRoutes = new Hono<AppEnv>()
     const userId = c.get('user').id;
     const id = c.req.param('id');
     await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('request-membership'), hashtext(${userId}))`);
+      const pending = await tx
+        .select({ id: requests.id })
+        .from(requestParticipants)
+        .innerJoin(requests, eq(requests.id, requestParticipants.requestId))
+        .where(
+          and(
+            eq(requestParticipants.userId, userId),
+            isNull(requests.acceptedAt),
+            or(
+              and(eq(requestParticipants.side, 'from'), eq(requests.fromBubbleId, id)),
+              and(eq(requestParticipants.side, 'to'), eq(requests.toBubbleId, id)),
+            ),
+          ),
+        )
+        .orderBy(requests.id);
+      for (const request of pending) await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${request.id}))`);
       await tx.delete(bubbleMembers).where(and(eq(bubbleMembers.bubbleId, id), eq(bubbleMembers.userId, userId)));
       await tx.execute(sql`
         delete from ${requestParticipants} p using ${requests} r

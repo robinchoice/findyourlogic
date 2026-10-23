@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, expect, spyOn, test } from 'bun:test';
-import { createDb, migrateDb, sessions, users } from '@app/db';
-import { eq } from 'drizzle-orm';
+import { bubbleMembers, createDb, migrateDb, requestParticipants, sessions, users } from '@app/db';
+import { and, eq, sql } from 'drizzle-orm';
 import { finalizeEvent, generateSecretKey } from 'nostr-tools/pure';
 import { createApp } from './app';
+import type { Tx } from './lib/db';
 import * as nostr from './lib/nostr';
 import { LOGIN_KIND } from './lib/nostr';
 import { generateToken, hashToken } from './middleware/auth';
@@ -52,6 +53,127 @@ async function bubble(owner: Session, name: string) {
 }
 
 const join = (as: Session, token: string) => call('POST', `/bubbles/invite/${token}/join`, as);
+
+async function pendingRequest() {
+  const [a1, a2, a3, b1, b2, b3] = await Promise.all(['A1', 'A2', 'A3', 'B1', 'B2', 'B3'].map(newUser));
+  const name = crypto.randomUUID().slice(0, 8);
+  const asking = await bubble(a1!, `Asking ${name}`);
+  const asked = await bubble(b1!, `Asked ${name}`);
+  for (const u of [a2!, a3!]) await join(u, asking.token);
+  for (const u of [b2!, b3!]) await join(u, asked.token);
+  const [status, created] = await call('POST', '/requests', a1, {
+    fromBubbleId: asking.id,
+    toBubbleId: asked.id,
+    question: 'How do we keep a round consistent?',
+    format: 'online',
+    startsAt: new Date().toISOString(),
+    seats: 3,
+  });
+  expect(status).toBe(201);
+  const id = created.request.id as string;
+  for (const u of [a2!, a3!, b1!, b2!]) expect((await call('POST', `/requests/${id}/join`, u))[0]).toBe(200);
+  return { id, asking, asked, a1: a1!, a2: a2!, a3: a3!, b1: b1!, b2: b2!, b3: b3! };
+}
+
+async function holdRow(lock: (tx: Tx) => PromiseLike<unknown>) {
+  const ready = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const transaction = db.transaction(async (tx) => {
+    await lock(tx);
+    ready.resolve();
+    await release.promise;
+  });
+  await Promise.race([ready.promise, transaction]);
+  return async () => {
+    release.resolve();
+    await transaction;
+  };
+}
+
+// Hold the first HTTP action at its write, then let its competitor either
+// finish (the old bug) or wait for the same transaction lock (the fix).
+async function waitForLock(fragment: string, action?: Promise<unknown>) {
+  let settled = false;
+  action?.then(
+    () => (settled = true),
+    () => (settled = true),
+  );
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    if (settled) {
+      await action;
+      return;
+    }
+    const blocked = await db.execute(sql`
+      select 1 from pg_stat_activity
+      where datname = current_database() and pid <> pg_backend_pid()
+        and wait_event_type = 'Lock' and query like ${`%${fragment}%`}`);
+    if (blocked.length) return;
+    await Bun.sleep(10);
+  }
+  throw new Error(`No blocked query containing ${fragment}`);
+}
+
+for (const kind of ['request', 'bubble'] as const) {
+  test(`a ${kind} withdrawal and the last join keep the accepted seat count consistent`, async () => {
+    const { id, asked, a1, b2, b3 } = await pendingRequest();
+    const release = await holdRow((tx) =>
+      tx
+        .select()
+        .from(requestParticipants)
+        .where(and(eq(requestParticipants.requestId, id), eq(requestParticipants.userId, b2.id)))
+        .for('update'),
+    );
+    const leaving = call('POST', kind === 'request' ? `/requests/${id}/leave` : `/bubbles/${asked.id}/leave`, b2);
+    let joining: ReturnType<typeof call> | undefined;
+    try {
+      await waitForLock('delete from "request_participants"');
+      joining = call('POST', `/requests/${id}/join`, b3);
+      await waitForLock('pg_advisory_xact_lock', joining);
+    } finally {
+      await release();
+    }
+    expect((await leaving)[0]).toBe(200);
+    expect((await joining!)[0]).toBe(200);
+    const [, detail] = await call('GET', `/requests/${id}`, a1);
+    expect(detail.request).toMatchObject({ acceptedAt: null, seats: 3, toCount: 2 });
+  }, 15_000);
+}
+
+test('leaving a bubble also prevents a concurrent join to another request', async () => {
+  const { asking, asked, a1, a2, a3, b2 } = await pendingRequest();
+  const [status, created] = await call('POST', '/requests', a1, {
+    fromBubbleId: asking.id,
+    toBubbleId: asked.id,
+    question: 'Can membership change during a join?',
+    format: 'online',
+    startsAt: new Date().toISOString(),
+    seats: 3,
+  });
+  expect(status).toBe(201);
+  const id = created.request.id as string;
+  for (const u of [a2, a3]) expect((await call('POST', `/requests/${id}/join`, u))[0]).toBe(200);
+  const release = await holdRow((tx) =>
+    tx
+      .select()
+      .from(bubbleMembers)
+      .where(and(eq(bubbleMembers.bubbleId, asked.id), eq(bubbleMembers.userId, b2.id)))
+      .for('update'),
+  );
+  const leaving = call('POST', `/bubbles/${asked.id}/leave`, b2);
+  let joining: ReturnType<typeof call> | undefined;
+  try {
+    await waitForLock('delete from "bubble_members"');
+    joining = call('POST', `/requests/${id}/join`, b2);
+    await waitForLock('pg_advisory_xact_lock', joining);
+  } finally {
+    await release();
+  }
+  expect((await leaving)[0]).toBe(200);
+  expect((await joining!)[0]).toBe(409);
+  const [, detail] = await call('GET', `/requests/${id}`, b2);
+  expect(detail.request.mySide).toBeNull();
+}, 15_000);
 
 async function nostrEvent(sk: Uint8Array, url = `${process.env.APP_URL}/api/v1/auth/nostr`) {
   const [, { challenge }] = await call('POST', '/auth/nostr/challenge');

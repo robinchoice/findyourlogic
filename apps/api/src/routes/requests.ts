@@ -99,6 +99,7 @@ export const requestRoutes = new Hono<AppEnv>()
     const userId = c.get('user').id;
     let announce = false;
     const error = await c.get('db').transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('request-membership'), hashtext(${userId}))`);
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
       const request = await loadRequest(tx, userId, id);
       if (!request) return t(c).notFound;
@@ -135,11 +136,16 @@ export const requestRoutes = new Hono<AppEnv>()
     if (!isUuid(id)) return c.json({ error: t(c).notFound }, 404);
     const db = c.get('db');
     const userId = c.get('user').id;
-    const [request] = await db.select({ acceptedAt: requests.acceptedAt }).from(requests).where(eq(requests.id, id));
-    if (!request) return c.json({ error: t(c).notFound }, 404);
-    if (request.acceptedAt) return c.json({ error: t(c).alreadyAccepted }, 409);
-    await db
-      .delete(requestParticipants)
-      .where(and(eq(requestParticipants.requestId, id), eq(requestParticipants.userId, userId)));
+    const error = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      const [request] = await tx.select({ acceptedAt: requests.acceptedAt }).from(requests).where(eq(requests.id, id));
+      if (!request) return { error: t(c).notFound, status: 404 as const };
+      if (request.acceptedAt) return { error: t(c).alreadyAccepted, status: 409 as const };
+      await tx
+        .delete(requestParticipants)
+        .where(and(eq(requestParticipants.requestId, id), eq(requestParticipants.userId, userId)));
+      return null;
+    });
+    if (error) return c.json({ error: error.error }, error.status);
     return c.json({ request: await loadRequest(db, userId, id) });
   });
