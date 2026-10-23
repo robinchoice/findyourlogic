@@ -6,7 +6,7 @@ import { inviteToken, isMember } from '../lib/db';
 import { t } from '../lib/i18n';
 import { computeMatches } from '../lib/matches';
 import { clientIp, rateLimit, tooManyRequests } from '../lib/rate-limit';
-import { validJson } from '../lib/validate';
+import { isUuid, validJson } from '../lib/validate';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv } from '../types';
 
@@ -162,6 +162,7 @@ export const bubbleRoutes = new Hono<AppEnv>()
   .post('/:id/invitation', async (c) => {
     const db = c.get('db');
     const userId = c.get('user').id;
+    if (!isUuid(c.req.param('id'))) return c.json({ error: t(c).notFound }, 404);
     const [invitation] = await db
       .delete(bubbleInvitations)
       .where(and(eq(bubbleInvitations.bubbleId, c.req.param('id')), eq(bubbleInvitations.userId, userId)))
@@ -172,6 +173,7 @@ export const bubbleRoutes = new Hono<AppEnv>()
   })
 
   .delete('/:id/invitation', async (c) => {
+    if (!isUuid(c.req.param('id'))) return c.json({ error: t(c).notFound }, 404);
     await c
       .get('db')
       .delete(bubbleInvitations)
@@ -184,7 +186,7 @@ export const bubbleRoutes = new Hono<AppEnv>()
     const db = c.get('db');
     const userId = c.get('user').id;
     const id = c.req.param('id');
-    if (!/^[0-9a-f-]{36}$/.test(id)) return c.json({ error: t(c).notFound }, 404);
+    if (!isUuid(id)) return c.json({ error: t(c).notFound }, 404);
     const [bubble] = await db
       .select({
         id: bubbles.id,
@@ -219,6 +221,7 @@ export const bubbleRoutes = new Hono<AppEnv>()
     const db = c.get('db');
     const userId = c.get('user').id;
     const id = c.req.param('id');
+    if (!isUuid(id)) return c.json({ error: t(c).notFound }, 404);
     await db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext('request-membership'), hashtext(${userId}))`);
       const pending = await tx

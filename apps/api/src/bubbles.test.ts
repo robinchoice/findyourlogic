@@ -214,6 +214,22 @@ test('editing a summary during confirmation cannot leave a completed round uncon
   expect((await call('POST', `/rounds/${id}/messages`, a1, { body: 'Too late to send.' }))[0]).toBe(409);
 }, 15_000);
 
+test('bubble actions return not found for malformed IDs', async () => {
+  const user = await newUser('Invalid IDs');
+  for (const id of ['invalid', '-'.repeat(36)]) {
+    for (const [method, path] of [
+      ['GET', `/bubbles/${id}`],
+      ['POST', `/bubbles/${id}/invitation`],
+      ['DELETE', `/bubbles/${id}/invitation`],
+      ['POST', `/bubbles/${id}/leave`],
+    ] as const) {
+      const [status, body] = await call(method, path, user);
+      expect(status).toBe(404);
+      expect(body.error).toBeString();
+    }
+  }
+});
+
 async function nostrEvent(sk: Uint8Array, url = `${process.env.APP_URL}/api/v1/auth/nostr`) {
   const [, { challenge }] = await call('POST', '/auth/nostr/challenge');
   return finalizeEvent(
