@@ -350,11 +350,19 @@ test('a request goes out with 3 supporters and starts once the other side is ful
   expect(open.request).toMatchObject({ canJoin: null, fromPeople: [] });
   expect((await call('POST', `/requests/${id}/join`, outsider))[0]).toBe(409);
 
+  for (const group of [asking, asked]) {
+    const [, detail] = await call('GET', `/bubbles/${group.id}`, a1);
+    expect(detail.bubble.rounds).toBe(0);
+  }
   await call('POST', `/requests/${id}/join`, b1);
   await call('POST', `/requests/${id}/join`, b2);
   const [, accepted] = await call('POST', `/requests/${id}/join`, b3);
   expect(accepted.request.acceptedAt).not.toBeNull();
   expect((await call('POST', `/requests/${id}/leave`, b3))[0]).toBe(409);
+  for (const group of [asking, asked]) {
+    const [, detail] = await call('GET', `/bubbles/${group.id}`, a1);
+    expect(detail.bubble.rounds).toBe(1);
+  }
 
   // The round: messages, three phases, both summaries confirmed
   expect((await call('GET', `/rounds/${id}`, b4))[0]).toBe(404);

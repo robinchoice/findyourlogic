@@ -1,6 +1,6 @@
 import { bubbleInvitations, bubbleMembers, bubbles, requestParticipants, requests, users } from '@app/db';
 import { BUBBLE_COLORS, bubbleSchema, type Invitation, type MyBubble, matchBubbleSchema } from '@app/shared';
-import { and, count, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { and, count, eq, ilike, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { inviteToken, isMember } from '../lib/db';
 import { t } from '../lib/i18n';
@@ -195,7 +195,6 @@ export const bubbleRoutes = new Hono<AppEnv>()
         description: bubbles.description,
         inviteToken: bubbles.inviteToken,
         members: memberCount,
-        rounds: roundCount,
       })
       .from(bubbles)
       .where(eq(bubbles.id, id));
@@ -209,8 +208,14 @@ export const bubbleRoutes = new Hono<AppEnv>()
           .where(eq(bubbleMembers.bubbleId, id))
           .orderBy(bubbleMembers.joinedAt)
       : [];
+    const [{ n: rounds }] = (await db
+      .select({ n: count() })
+      .from(requests)
+      .where(and(or(eq(requests.fromBubbleId, id), eq(requests.toBubbleId, id)), isNotNull(requests.acceptedAt)))) as [
+      { n: number },
+    ];
     return c.json({
-      bubble: { ...bubble, inviteToken: member ? bubble.inviteToken : null },
+      bubble: { ...bubble, inviteToken: member ? bubble.inviteToken : null, rounds },
       member,
       people,
     });
