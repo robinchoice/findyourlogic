@@ -5,12 +5,10 @@ import { Hono } from 'hono';
 import { inviteToken, isMember, loadRequest, myBubbleIds, requestCards } from '../lib/db';
 import { t } from '../lib/i18n';
 import { publishNote } from '../lib/nostr';
-import { validJson } from '../lib/validate';
+import { isUuid, validJson } from '../lib/validate';
 import { requireAuth } from '../middleware/auth';
 import { captureException } from '../monitoring';
 import type { AppEnv } from '../types';
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export const requestRoutes = new Hono<AppEnv>()
   .use(requireAuth)
@@ -89,7 +87,7 @@ export const requestRoutes = new Hono<AppEnv>()
 
   .get('/:id', async (c) => {
     const id = c.req.param('id');
-    const request = UUID.test(id) ? await loadRequest(c.get('db'), c.get('user').id, id) : null;
+    const request = isUuid(id) ? await loadRequest(c.get('db'), c.get('user').id, id) : null;
     if (!request) return c.json({ error: t(c).notFound }, 404);
     return c.json({ request });
   })
@@ -97,7 +95,7 @@ export const requestRoutes = new Hono<AppEnv>()
   // Seats are counted under a lock per request, so parallel joins can't overfill a side
   .post('/:id/join', async (c) => {
     const id = c.req.param('id');
-    if (!UUID.test(id)) return c.json({ error: t(c).notFound }, 404);
+    if (!isUuid(id)) return c.json({ error: t(c).notFound }, 404);
     const userId = c.get('user').id;
     let announce = false;
     const error = await c.get('db').transaction(async (tx) => {
@@ -134,7 +132,7 @@ export const requestRoutes = new Hono<AppEnv>()
   // Withdrawing is possible until the round starts
   .post('/:id/leave', async (c) => {
     const id = c.req.param('id');
-    if (!UUID.test(id)) return c.json({ error: t(c).notFound }, 404);
+    if (!isUuid(id)) return c.json({ error: t(c).notFound }, 404);
     const db = c.get('db');
     const userId = c.get('user').id;
     const [request] = await db.select({ acceptedAt: requests.acceptedAt }).from(requests).where(eq(requests.id, id));

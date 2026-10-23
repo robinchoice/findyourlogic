@@ -15,11 +15,10 @@ import { Hono } from 'hono';
 import { type Db, loadRequest, requestCards } from '../lib/db';
 import { t } from '../lib/i18n';
 import { rateLimit, tooManyRequests } from '../lib/rate-limit';
-import { validJson } from '../lib/validate';
+import { isUuid, validJson } from '../lib/validate';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv } from '../types';
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const messagesPerUser = rateLimit('round-messages-per-user', 120, 60 * 60 * 1000);
 const other = (side: Side): Side => (side === 'from' ? 'to' : 'from');
 
@@ -28,7 +27,7 @@ const confirmer = alias(users, 'confirmer');
 
 // Only the people in the round read and write it
 async function loadRound(db: Db, userId: string, id: string): Promise<Round | null> {
-  if (!UUID.test(id)) return null;
+  if (!isUuid(id)) return null;
   const request = await loadRequest(db, userId, id);
   if (!request?.acceptedAt || !request.mySide) return null;
   const [state] = await db
@@ -42,10 +41,14 @@ async function loadRound(db: Db, userId: string, id: string): Promise<Round | nu
       body: roundMessages.body,
       createdAt: roundMessages.createdAt,
       author: { id: users.id, name: users.name },
-      side: sql<Side>`coalesce((select p.side from ${requestParticipants} p where p.request_id = ${id} and p.user_id = ${users.id}), 'from')`,
+      side: sql<Side>`coalesce(${requestParticipants.side}, 'from')`,
     })
     .from(roundMessages)
     .innerJoin(users, eq(users.id, roundMessages.userId))
+    .leftJoin(
+      requestParticipants,
+      and(eq(requestParticipants.requestId, roundMessages.requestId), eq(requestParticipants.userId, users.id)),
+    )
     .where(eq(roundMessages.requestId, id))
     .orderBy(asc(roundMessages.createdAt));
   const summaries: Summary[] = (await db

@@ -1,3 +1,4 @@
+import NOSTR_RELAYS from '@app/shared/nostr-relays' with { type: 'json' };
 import adapter from '@sveltejs/adapter-node';
 
 /** @type {import('@sveltejs/kit').Config} */
@@ -18,8 +19,7 @@ export default {
         // Style attributes in app.html and in SvelteKit's route announcer
         'style-src-attr': ['unsafe-inline'],
         'img-src': ['self', 'data:'],
-        // The relays of the Nostr login with a signer app (NOSTR_RELAYS in packages/shared)
-        'connect-src': ['self', 'https://glitchtip.pleasance.org', 'wss://relay.damus.io', 'wss://nos.lol'],
+        'connect-src': ['self', 'https://glitchtip.pleasance.org', ...NOSTR_RELAYS],
         'frame-ancestors': ['none'],
         'base-uri': ['self'],
         'form-action': ['self'],

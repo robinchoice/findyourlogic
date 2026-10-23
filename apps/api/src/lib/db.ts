@@ -82,8 +82,10 @@ export async function loadRequest(db: Db, userId: string, id: string): Promise<R
     .from(requests)
     .innerJoin(bubbles, eq(bubbles.id, requests.toBubbleId))
     .where(eq(requests.id, id));
-  const fromMember = await isMember(db, card.from.id, userId);
-  const toMember = await isMember(db, card.to.id, userId);
+  const [fromMember, toMember] = await Promise.all([
+    isMember(db, card.from.id, userId),
+    isMember(db, card.to.id, userId),
+  ]);
   if (!card.sentAt && !fromMember) return null;
 
   let canJoin: Side | null = null;
@@ -92,13 +94,14 @@ export async function loadRequest(db: Db, userId: string, id: string): Promise<R
     else if (toMember && card.sentAt && card.toCount < card.seats) canJoin = 'to';
   }
   const insider = fromMember || toMember;
+  const [fromPeople, toPeople] = insider ? await Promise.all([people(db, id, 'from'), people(db, id, 'to')]) : [[], []];
   return {
     ...card,
     details: extra!.details,
     nostrNote: extra!.nostrNote,
     canJoin,
-    fromPeople: insider ? await people(db, id, 'from') : [],
-    toPeople: insider ? await people(db, id, 'to') : [],
+    fromPeople,
+    toPeople,
     // The asking side passes the link on to a bubble that isn't here yet
     toInviteToken: fromMember && extra!.toMembers === 0 ? extra!.toInviteToken : null,
   };

@@ -1,16 +1,15 @@
 import { directMessages, users } from '@app/db';
-import { type Conversation, type DirectMessage, messageSchema } from '@app/shared';
+import { type Conversation, type DirectMessage, messageSchema, type User } from '@app/shared';
 import { and, desc, eq, inArray, isNull, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { Db } from '../lib/db';
 import { t } from '../lib/i18n';
 import { computeMatches } from '../lib/matches';
 import { rateLimit, tooManyRequests } from '../lib/rate-limit';
-import { validJson } from '../lib/validate';
+import { isUuid, validJson } from '../lib/validate';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv } from '../types';
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const messagesPerUser = rateLimit('direct-messages-per-user', 30, 60 * 60 * 1000);
 
 const between = (a: string, b: string) =>
@@ -22,6 +21,10 @@ const between = (a: string, b: string) =>
 async function hasThread(db: Db, a: string, b: string) {
   const [row] = await db.select({ id: directMessages.id }).from(directMessages).where(between(a, b)).limit(1);
   return !!row;
+}
+
+async function canMessage(db: Db, me: User, other: string) {
+  return (await hasThread(db, me.id, other)) || (await computeMatches(db, me)).people.some((p) => p.id === other);
 }
 
 export const messageRoutes = new Hono<AppEnv>()
@@ -66,11 +69,9 @@ export const messageRoutes = new Hono<AppEnv>()
     const db = c.get('db');
     const me = c.get('user');
     const other = c.req.param('userId');
-    if (!UUID.test(other)) return c.json({ error: t(c).notFound }, 404);
+    if (!isUuid(other)) return c.json({ error: t(c).notFound }, 404);
     const [person] = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, other));
-    const allowed =
-      person &&
-      ((await hasThread(db, me.id, other)) || (await computeMatches(db, me)).people.some((p) => p.id === other));
+    const allowed = person && (await canMessage(db, me, other));
     if (!allowed) return c.json({ error: t(c).cannotMessage }, 404);
     await db
       .update(directMessages)
@@ -96,9 +97,8 @@ export const messageRoutes = new Hono<AppEnv>()
     const me = c.get('user');
     const other = c.req.param('userId');
     if (!(await messagesPerUser.hit(c, me.id))) return tooManyRequests(c);
-    if (!UUID.test(other) || other === me.id) return c.json({ error: t(c).cannotMessage }, 403);
-    const allowed =
-      (await hasThread(db, me.id, other)) || (await computeMatches(db, me)).people.some((p) => p.id === other);
+    if (!isUuid(other) || other === me.id) return c.json({ error: t(c).cannotMessage }, 403);
+    const allowed = await canMessage(db, me, other);
     if (!allowed) return c.json({ error: t(c).cannotMessage }, 403);
     await db.insert(directMessages).values({ fromId: me.id, toId: other, body: c.req.valid('json').body });
     return c.json({ ok: true }, 201);

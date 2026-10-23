@@ -6,14 +6,12 @@ import { createIssue } from '../lib/github';
 import { t } from '../lib/i18n';
 import { sendMail } from '../lib/mail';
 import { rateLimit, tooManyRequests } from '../lib/rate-limit';
-import { validJson } from '../lib/validate';
+import { isUuid, validJson } from '../lib/validate';
 import { requireAuth } from '../middleware/auth';
 import { captureException } from '../monitoring';
 import type { AppEnv } from '../types';
 
 const reportsPerUser = rateLimit('feedback-per-user', 10, 60 * 60 * 1000);
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 function imageType(bytes: Buffer) {
   if (bytes.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47]))) return 'image/png';
@@ -144,7 +142,7 @@ export const feedbackRoutes = new Hono<AppEnv>()
   // a session. The random id is the key.
   .get('/:id/screenshot', async (c) => {
     const id = c.req.param('id');
-    const [row] = UUID.test(id)
+    const [row] = isUuid(id)
       ? await c.get('db').select({ screenshot: feedback.screenshot }).from(feedback).where(eq(feedback.id, id))
       : [];
     if (!row?.screenshot) return c.json({ error: t(c).notFound }, 404);

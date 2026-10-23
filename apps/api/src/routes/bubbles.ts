@@ -1,6 +1,6 @@
 import { bubbleInvitations, bubbleMembers, bubbles, requestParticipants, requests, users } from '@app/db';
 import { BUBBLE_COLORS, bubbleSchema, type Invitation, type MyBubble, matchBubbleSchema } from '@app/shared';
-import { and, count, eq, ilike, isNotNull, or, sql } from 'drizzle-orm';
+import { and, count, eq, ilike, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { inviteToken, isMember } from '../lib/db';
 import { t } from '../lib/i18n';
@@ -13,6 +13,7 @@ import type { AppEnv } from '../types';
 const inviteChecksPerIp = rateLimit('invite-checks-per-ip', 60, 15 * 60 * 1000);
 
 const memberCount = sql<number>`(select count(*)::int from ${bubbleMembers} m where m.bubble_id = ${bubbles.id})`;
+const roundCount = sql<number>`(select count(*)::int from ${requests} r where (r.to_bubble_id = ${bubbles.id} or r.from_bubble_id = ${bubbles.id}) and r.accepted_at is not null)`;
 
 // Postgres reports a taken name as a unique violation of bubbles_name_lower
 const nameTaken = (err: unknown) =>
@@ -52,7 +53,7 @@ export const bubbleRoutes = new Hono<AppEnv>()
         asTrait: bubbleMembers.asTrait,
         members: memberCount,
         openRequests: sql<number>`(select count(*)::int from ${requests} r where r.to_bubble_id = ${bubbles.id} and r.sent_at is not null and r.accepted_at is null)`,
-        rounds: sql<number>`(select count(*)::int from ${requests} r where (r.to_bubble_id = ${bubbles.id} or r.from_bubble_id = ${bubbles.id}) and r.accepted_at is not null)`,
+        rounds: roundCount,
       })
       .from(bubbleMembers)
       .innerJoin(bubbles, eq(bubbles.id, bubbleMembers.bubbleId))
@@ -192,6 +193,7 @@ export const bubbleRoutes = new Hono<AppEnv>()
         description: bubbles.description,
         inviteToken: bubbles.inviteToken,
         members: memberCount,
+        rounds: roundCount,
       })
       .from(bubbles)
       .where(eq(bubbles.id, id));
@@ -205,14 +207,8 @@ export const bubbleRoutes = new Hono<AppEnv>()
           .where(eq(bubbleMembers.bubbleId, id))
           .orderBy(bubbleMembers.joinedAt)
       : [];
-    const [{ n: rounds }] = (await db
-      .select({ n: count() })
-      .from(requests)
-      .where(and(or(eq(requests.fromBubbleId, id), eq(requests.toBubbleId, id)), isNotNull(requests.acceptedAt)))) as [
-      { n: number },
-    ];
     return c.json({
-      bubble: { ...bubble, inviteToken: member ? bubble.inviteToken : null, rounds },
+      bubble: { ...bubble, inviteToken: member ? bubble.inviteToken : null },
       member,
       people,
     });

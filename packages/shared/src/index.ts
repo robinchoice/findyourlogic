@@ -102,7 +102,7 @@ export const SUPPORTERS_NEEDED = 3;
 
 // Signer apps answer the login QR code here (NIP-46), and request notes go
 // out here. Also in connect-src in apps/web/svelte.config.js.
-export const NOSTR_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol'];
+export { default as NOSTR_RELAYS } from './nostr-relays.json';
 
 // Bubble colours, picked when a bubble is created
 export const BUBBLE_COLORS = [
