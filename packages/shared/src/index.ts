@@ -101,7 +101,7 @@ export const MIN_SHARED = 3;
 export const SUPPORTERS_NEEDED = 3;
 
 // Signer apps answer the login QR code here (NIP-46), and request notes go
-// out here. Also in connect-src in apps/web/svelte.config.js.
+// out here. connect-src in apps/web/svelte.config.js reads the same list.
 export { default as NOSTR_RELAYS } from './nostr-relays.json';
 
 // Bubble colours, picked when a bubble is created

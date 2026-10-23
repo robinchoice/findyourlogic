@@ -6,6 +6,11 @@ import { alias } from 'drizzle-orm/pg-core';
 export type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 export type Db = Database | Tx;
 
+export const lockRequest = (tx: Tx, id: string) => tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+
+export const lockMembership = (tx: Tx, userId: string) =>
+  tx.execute(sql`select pg_advisory_xact_lock(hashtext('request-membership'), hashtext(${userId}))`);
+
 export const myBubbleIds = (db: Db, userId: string) =>
   db.select({ id: bubbleMembers.bubbleId }).from(bubbleMembers).where(eq(bubbleMembers.userId, userId));
 

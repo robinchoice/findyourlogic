@@ -2,7 +2,7 @@ import { bubbleInvitations, bubbleMembers, bubbles, requestParticipants, request
 import { BUBBLE_COLORS, bubbleSchema, type Invitation, type MyBubble, matchBubbleSchema } from '@app/shared';
 import { and, count, eq, ilike, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { inviteToken, isMember } from '../lib/db';
+import { inviteToken, isMember, lockMembership, lockRequest } from '../lib/db';
 import { t } from '../lib/i18n';
 import { computeMatches } from '../lib/matches';
 import { clientIp, rateLimit, tooManyRequests } from '../lib/rate-limit';
@@ -162,10 +162,11 @@ export const bubbleRoutes = new Hono<AppEnv>()
   .post('/:id/invitation', async (c) => {
     const db = c.get('db');
     const userId = c.get('user').id;
-    if (!isUuid(c.req.param('id'))) return c.json({ error: t(c).notFound }, 404);
+    const id = c.req.param('id');
+    if (!isUuid(id)) return c.json({ error: t(c).notFound }, 404);
     const [invitation] = await db
       .delete(bubbleInvitations)
-      .where(and(eq(bubbleInvitations.bubbleId, c.req.param('id')), eq(bubbleInvitations.userId, userId)))
+      .where(and(eq(bubbleInvitations.bubbleId, id), eq(bubbleInvitations.userId, userId)))
       .returning({ bubbleId: bubbleInvitations.bubbleId });
     if (!invitation) return c.json({ error: t(c).notFound }, 404);
     await db.insert(bubbleMembers).values({ bubbleId: invitation.bubbleId, userId }).onConflictDoNothing();
@@ -173,11 +174,12 @@ export const bubbleRoutes = new Hono<AppEnv>()
   })
 
   .delete('/:id/invitation', async (c) => {
-    if (!isUuid(c.req.param('id'))) return c.json({ error: t(c).notFound }, 404);
+    const id = c.req.param('id');
+    if (!isUuid(id)) return c.json({ error: t(c).notFound }, 404);
     await c
       .get('db')
       .delete(bubbleInvitations)
-      .where(and(eq(bubbleInvitations.bubbleId, c.req.param('id')), eq(bubbleInvitations.userId, c.get('user').id)));
+      .where(and(eq(bubbleInvitations.bubbleId, id), eq(bubbleInvitations.userId, c.get('user').id)));
     return c.json({ ok: true });
   })
 
@@ -228,7 +230,7 @@ export const bubbleRoutes = new Hono<AppEnv>()
     const id = c.req.param('id');
     if (!isUuid(id)) return c.json({ error: t(c).notFound }, 404);
     await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('request-membership'), hashtext(${userId}))`);
+      await lockMembership(tx, userId);
       const pending = await tx
         .select({ id: requests.id })
         .from(requestParticipants)
@@ -244,7 +246,7 @@ export const bubbleRoutes = new Hono<AppEnv>()
           ),
         )
         .orderBy(requests.id);
-      for (const request of pending) await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${request.id}))`);
+      for (const request of pending) await lockRequest(tx, request.id);
       await tx.delete(bubbleMembers).where(and(eq(bubbleMembers.bubbleId, id), eq(bubbleMembers.userId, userId)));
       await tx.execute(sql`
         delete from ${requestParticipants} p using ${requests} r

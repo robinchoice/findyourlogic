@@ -2,7 +2,7 @@ import { bubbles, requestParticipants, requests } from '@app/db';
 import { BUBBLE_COLORS, requestSchema, SUPPORTERS_NEEDED } from '@app/shared';
 import { and, asc, desc, eq, inArray, isNotNull, notInArray, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { inviteToken, isMember, loadRequest, myBubbleIds, requestCards } from '../lib/db';
+import { inviteToken, isMember, loadRequest, lockMembership, lockRequest, myBubbleIds, requestCards } from '../lib/db';
 import { t } from '../lib/i18n';
 import { publishNote } from '../lib/nostr';
 import { isUuid, validJson } from '../lib/validate';
@@ -99,8 +99,8 @@ export const requestRoutes = new Hono<AppEnv>()
     const userId = c.get('user').id;
     let announce = false;
     const error = await c.get('db').transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('request-membership'), hashtext(${userId}))`);
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      await lockMembership(tx, userId);
+      await lockRequest(tx, id);
       const request = await loadRequest(tx, userId, id);
       if (!request) return t(c).notFound;
       if (!request.canJoin) return request.acceptedAt ? t(c).alreadyAccepted : t(c).cannotJoin;
@@ -137,15 +137,15 @@ export const requestRoutes = new Hono<AppEnv>()
     const db = c.get('db');
     const userId = c.get('user').id;
     const error = await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      await lockRequest(tx, id);
       const [request] = await tx.select({ acceptedAt: requests.acceptedAt }).from(requests).where(eq(requests.id, id));
-      if (!request) return { error: t(c).notFound, status: 404 as const };
-      if (request.acceptedAt) return { error: t(c).alreadyAccepted, status: 409 as const };
+      if (!request) return c.json({ error: t(c).notFound }, 404);
+      if (request.acceptedAt) return c.json({ error: t(c).alreadyAccepted }, 409);
       await tx
         .delete(requestParticipants)
         .where(and(eq(requestParticipants.requestId, id), eq(requestParticipants.userId, userId)));
       return null;
     });
-    if (error) return c.json({ error: error.error }, error.status);
+    if (error) return error;
     return c.json({ request: await loadRequest(db, userId, id) });
   });

@@ -12,7 +12,7 @@ import {
 import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { Hono } from 'hono';
-import { type Db, loadRequest, requestCards } from '../lib/db';
+import { type Db, loadRequest, lockRequest, requestCards } from '../lib/db';
 import { t } from '../lib/i18n';
 import { rateLimit, tooManyRequests } from '../lib/rate-limit';
 import { isUuid, validJson } from '../lib/validate';
@@ -100,7 +100,7 @@ export const roundRoutes = new Hono<AppEnv>()
     if (!(await messagesPerUser.hit(c, user.id))) return tooManyRequests(c);
     const id = c.req.param('id');
     return db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      await lockRequest(tx, id);
       const round = await loadRound(tx, user.id, id);
       if (!round) return c.json({ error: t(c).notParticipant }, 404);
       if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
@@ -117,7 +117,7 @@ export const roundRoutes = new Hono<AppEnv>()
     const userId = c.get('user').id;
     const id = c.req.param('id');
     return db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      await lockRequest(tx, id);
       const round = await loadRound(tx, userId, id);
       if (!round) return c.json({ error: t(c).notParticipant }, 404);
       if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
@@ -132,7 +132,7 @@ export const roundRoutes = new Hono<AppEnv>()
     const userId = c.get('user').id;
     const id = c.req.param('id');
     return db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      await lockRequest(tx, id);
       const round = await loadRound(tx, userId, id);
       if (!round) return c.json({ error: t(c).notParticipant }, 404);
       if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
@@ -157,7 +157,7 @@ export const roundRoutes = new Hono<AppEnv>()
     const side = c.req.param('side');
     const id = c.req.param('id');
     return db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      await lockRequest(tx, id);
       const round = await loadRound(tx, userId, id);
       if (!round) return c.json({ error: t(c).notParticipant }, 404);
       if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
