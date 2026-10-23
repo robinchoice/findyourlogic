@@ -98,43 +98,55 @@ export const roundRoutes = new Hono<AppEnv>()
     const db = c.get('db');
     const user = c.get('user');
     if (!(await messagesPerUser.hit(c, user.id))) return tooManyRequests(c);
-    const round = await loadRound(db, user.id, c.req.param('id'));
-    if (!round) return c.json({ error: t(c).notParticipant }, 404);
-    if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
-    await db
-      .insert(roundMessages)
-      .values({ requestId: round.id, userId: user.id, phase: round.phase, body: c.req.valid('json').body });
-    return c.json({ round: await loadRound(db, user.id, round.id) }, 201);
+    const id = c.req.param('id');
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      const round = await loadRound(tx, user.id, id);
+      if (!round) return c.json({ error: t(c).notParticipant }, 404);
+      if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
+      await tx
+        .insert(roundMessages)
+        .values({ requestId: round.id, userId: user.id, phase: round.phase, body: c.req.valid('json').body });
+      return c.json({ round: await loadRound(tx, user.id, round.id) }, 201);
+    });
   })
 
   // Any participant moves the phase on and sets the video room
   .patch('/:id', validJson(roundUpdateSchema), async (c) => {
     const db = c.get('db');
     const userId = c.get('user').id;
-    const round = await loadRound(db, userId, c.req.param('id'));
-    if (!round) return c.json({ error: t(c).notParticipant }, 404);
-    if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
-    await db.update(requests).set(c.req.valid('json')).where(eq(requests.id, round.id));
-    return c.json({ round: await loadRound(db, userId, round.id) });
+    const id = c.req.param('id');
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      const round = await loadRound(tx, userId, id);
+      if (!round) return c.json({ error: t(c).notParticipant }, 404);
+      if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
+      await tx.update(requests).set(c.req.valid('json')).where(eq(requests.id, round.id));
+      return c.json({ round: await loadRound(tx, userId, round.id) });
+    });
   })
 
   // My side's summary of the other side's view. Editing it asks for a new confirmation.
   .put('/:id/summary', validJson(summarySchema), async (c) => {
     const db = c.get('db');
     const userId = c.get('user').id;
-    const round = await loadRound(db, userId, c.req.param('id'));
-    if (!round) return c.json({ error: t(c).notParticipant }, 404);
-    if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
-    if (round.phase !== 'summary') return c.json({ error: t(c).notSummaryPhase }, 409);
-    const values = { body: c.req.valid('json').body, authorId: userId, confirmedBy: null, confirmedAt: null };
-    await db
-      .insert(roundSummaries)
-      .values({ requestId: round.id, side: round.mySide!, ...values })
-      .onConflictDoUpdate({
-        target: [roundSummaries.requestId, roundSummaries.side],
-        set: { ...values, updatedAt: new Date() },
-      });
-    return c.json({ round: await loadRound(db, userId, round.id) });
+    const id = c.req.param('id');
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      const round = await loadRound(tx, userId, id);
+      if (!round) return c.json({ error: t(c).notParticipant }, 404);
+      if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
+      if (round.phase !== 'summary') return c.json({ error: t(c).notSummaryPhase }, 409);
+      const values = { body: c.req.valid('json').body, authorId: userId, confirmedBy: null, confirmedAt: null };
+      await tx
+        .insert(roundSummaries)
+        .values({ requestId: round.id, side: round.mySide!, ...values })
+        .onConflictDoUpdate({
+          target: [roundSummaries.requestId, roundSummaries.side],
+          set: { ...values, updatedAt: new Date() },
+        });
+      return c.json({ round: await loadRound(tx, userId, round.id) });
+    });
   })
 
   // The side that was summed up says "yes, that's how we see it". Once both
@@ -143,24 +155,28 @@ export const roundRoutes = new Hono<AppEnv>()
     const db = c.get('db');
     const userId = c.get('user').id;
     const side = c.req.param('side');
-    const round = await loadRound(db, userId, c.req.param('id'));
-    if (!round) return c.json({ error: t(c).notParticipant }, 404);
-    if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
-    if (side !== other(round.mySide!)) return c.json({ error: t(c).confirmOtherSide }, 403);
-    const [confirmed] = await db
-      .update(roundSummaries)
-      .set({ confirmedBy: userId, confirmedAt: new Date() })
-      .where(and(eq(roundSummaries.requestId, round.id), eq(roundSummaries.side, side)))
-      .returning({ side: roundSummaries.side });
-    if (!confirmed) return c.json({ error: t(c).notFound }, 404);
-    await db
-      .update(requests)
-      .set({ doneAt: new Date() })
-      .where(
-        and(
-          eq(requests.id, round.id),
-          sql`(select count(*) from ${roundSummaries} s where s.request_id = ${round.id} and s.confirmed_at is not null) = 2`,
-        ),
-      );
-    return c.json({ round: await loadRound(db, userId, round.id) });
+    const id = c.req.param('id');
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
+      const round = await loadRound(tx, userId, id);
+      if (!round) return c.json({ error: t(c).notParticipant }, 404);
+      if (round.doneAt) return c.json({ error: t(c).roundDone }, 409);
+      if (side !== other(round.mySide!)) return c.json({ error: t(c).confirmOtherSide }, 403);
+      const [confirmed] = await tx
+        .update(roundSummaries)
+        .set({ confirmedBy: userId, confirmedAt: new Date() })
+        .where(and(eq(roundSummaries.requestId, round.id), eq(roundSummaries.side, side)))
+        .returning({ side: roundSummaries.side });
+      if (!confirmed) return c.json({ error: t(c).notFound }, 404);
+      await tx
+        .update(requests)
+        .set({ doneAt: new Date() })
+        .where(
+          and(
+            eq(requests.id, round.id),
+            sql`(select count(*) from ${roundSummaries} s where s.request_id = ${round.id} and s.confirmed_at is not null) = 2`,
+          ),
+        );
+      return c.json({ round: await loadRound(tx, userId, round.id) });
+    });
   });

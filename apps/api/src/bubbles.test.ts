@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, spyOn, test } from 'bun:test';
-import { bubbleMembers, createDb, migrateDb, requestParticipants, sessions, users } from '@app/db';
+import { bubbleMembers, createDb, migrateDb, requestParticipants, roundSummaries, sessions, users } from '@app/db';
 import { and, eq, sql } from 'drizzle-orm';
 import { finalizeEvent, generateSecretKey } from 'nostr-tools/pure';
 import { createApp } from './app';
@@ -173,6 +173,45 @@ test('leaving a bubble also prevents a concurrent join to another request', asyn
   expect((await joining!)[0]).toBe(409);
   const [, detail] = await call('GET', `/requests/${id}`, b2);
   expect(detail.request.mySide).toBeNull();
+}, 15_000);
+
+test('editing a summary during confirmation cannot leave a completed round unconfirmed', async () => {
+  const { id, a1, a2, b1, b3 } = await pendingRequest();
+  expect((await call('POST', `/requests/${id}/join`, b3))[0]).toBe(200);
+  expect((await call('PATCH', `/rounds/${id}`, a1, { phase: 'summary' }))[0]).toBe(200);
+  expect((await call('PUT', `/rounds/${id}/summary`, a1, { body: 'First summary before editing.' }))[0]).toBe(200);
+  expect((await call('PUT', `/rounds/${id}/summary`, b1, { body: 'Other side summary.' }))[0]).toBe(200);
+  expect((await call('POST', `/rounds/${id}/summary/from/confirm`, b1))[0]).toBe(200);
+  const release = await holdRow((tx) =>
+    tx
+      .select()
+      .from(roundSummaries)
+      .where(and(eq(roundSummaries.requestId, id), eq(roundSummaries.side, 'from')))
+      .for('update'),
+  );
+  const editing = call('PUT', `/rounds/${id}/summary`, a1, { body: 'Edited before the round can complete.' });
+  let confirming: ReturnType<typeof call> | undefined;
+  try {
+    await waitForLock('insert into "round_summaries"');
+    confirming = call('POST', `/rounds/${id}/summary/to/confirm`, a2);
+    await waitForLock('pg_advisory_xact_lock', confirming);
+  } finally {
+    await release();
+  }
+  expect((await editing)[0]).toBe(200);
+  expect((await confirming!)[0]).toBe(200);
+  const [, detail] = await call('GET', `/rounds/${id}`, a1);
+  expect(detail.round.doneAt).toBeNull();
+  expect(detail.round.summaries.find((s: { side: string }) => s.side === 'from')).toMatchObject({
+    body: 'Edited before the round can complete.',
+    confirmedBy: null,
+  });
+  const [status, done] = await call('POST', `/rounds/${id}/summary/from/confirm`, b1);
+  expect(status).toBe(200);
+  expect(done.round.doneAt).not.toBeNull();
+  expect((await call('PUT', `/rounds/${id}/summary`, a1, { body: 'Too late to edit.' }))[0]).toBe(409);
+  expect((await call('PATCH', `/rounds/${id}`, a1, { phase: 'views' }))[0]).toBe(409);
+  expect((await call('POST', `/rounds/${id}/messages`, a1, { body: 'Too late to send.' }))[0]).toBe(409);
 }, 15_000);
 
 async function nostrEvent(sk: Uint8Array, url = `${process.env.APP_URL}/api/v1/auth/nostr`) {
