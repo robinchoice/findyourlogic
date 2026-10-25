@@ -38,6 +38,7 @@ const CODE_ATTEMPTS = 5;
 const mailsPerAddress = rateLimit('mails-per-address', 5, 60 * MINUTE);
 const mailsPerIp = rateLimit('mails-per-ip', 20, 60 * MINUTE);
 const codeChecksPerIp = rateLimit('code-checks-per-ip', 30, 15 * MINUTE);
+const linkChecksPerIp = rateLimit('link-checks-per-ip', 60, 15 * MINUTE);
 const nostrPerIp = rateLimit('nostr-per-ip', 30, 15 * MINUTE);
 
 // SIGNUPS_OPEN=false closes the app to new accounts, existing ones still log in
@@ -97,6 +98,7 @@ export const authRoutes = new Hono<AppEnv>()
   })
 
   .post('/verify', validJson(verifySchema), async (c) => {
+    if (!(await linkChecksPerIp.hit(c, clientIp(c)))) return tooManyRequests(c);
     const db = c.get('db');
 
     // Marking the link as used in the same statement keeps it single-use
