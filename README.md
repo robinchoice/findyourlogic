@@ -34,6 +34,15 @@ Vorlage für Web- und Mobile-Prototypen: Bun, Hono, SvelteKit, Drizzle und Postg
 
 Befehle: `bun run dev`, `check` (Biome und Typen), `format`, `test`, `build`, `db:generate`, `standards` (Übersicht der Standards auf http://localhost:4300), in `apps/web` außerdem `screenshots` (siehe „Screenshots“) und `og-image` (Vorschaubild für geteilte Links, DESIGN.md). `build` baut Web und CLI. `test` umfasst die API-Tests, die CLI-Tests und Browser-Tests von Login, Feedback und Link-Vorschau (Playwright, baut das Web vor dem Start und testet den Produktions-Build mit derselben CSP wie live; API und Web starten auf eigenen Ports 31100 und 31101, nie gegen laufende Dev-Server; testen zwei Worktrees gleichzeitig, bekommt einer andere per `TEST_API_PORT` und `TEST_WEB_PORT`, etwa 31102 und 31103). Testports bleiben unter dem ephemeren Linux-Portbereich (32768–60999). Alle laufen gegen `DATABASE_URL` und legen nur Testkonten mit frischen Adressen an.
 
+## Secret-Scan
+
+Das Repo ist öffentlich, Code, Historie und CI-Logs. Der Workflow `.github/workflows/secrets.yml` läuft bei jedem Push auf jedem Branch und bei PRs aus Forks, ohne `paths-ignore`, und scannt mit gitleaks (Docker-Image, Version per Digest fest) die neuen Commits. Ein Fund macht den Lauf rot, der Wert steht dank `--redact` nicht im Log.
+
+- Regeln: die Standardregeln von gitleaks, dazu `.gitleaks.toml`. Die nimmt nur `generic-api-key` in `patches/*.patch` und `bun.lock` aus, dort schlägt gebündelter Fremdcode an. Echte Token-Formate (`ghp_…`, `sk_live_…`) fallen dort weiter auf.
+- Fehlalarm: den `Fingerprint` aus dem Log als Zeile in `.gitleaksignore` eintragen.
+- Davor sitzt GitHubs Push Protection (hier eingeschaltet): Sie lehnt Pushes mit bekannten Token-Formaten ab, bevor sie öffentlich werden, Secret Scanning meldet Funde als Alert im Repo. Eine Sperre nur nach Prüfung umgehen, nie für einen echten Wert.
+- Echter Fund: gitleaks läuft erst nach dem Push, das Secret ist also schon öffentlich. Sofort rotieren, Entfernen aus dem Code oder der Historie reicht nicht.
+
 ## Feedback
 
 Eingeloggte Tester sehen auf jeder Seite einen Käfer-Knopf, im Web unter `routes/(app)`, in der App über allen Screens. Er lässt sich verschieben. Ein Tipp macht einen Screenshot des Bildschirms, der Tester kann die Stelle markieren und schreibt dazu, was nicht stimmt. Anregungen und Wünsche ohne Screenshot gehen über „Feedback geben“ im Kopf (Web) bzw. im Profil (App).
