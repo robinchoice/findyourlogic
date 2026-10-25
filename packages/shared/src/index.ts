@@ -10,6 +10,9 @@ z.config({ jitless: true });
 // The one place to rename a new project. API mails and web titles read it.
 export const APP_NAME = 'findyourlogic';
 
+// Bundle ID of the app (org.pleasance.<slug>). The CLI is named after its last part.
+export const APP_ID = 'org.pleasance.findyourlogic';
+
 // Section of the family colour band for this product, see DESIGN.md
 export const APP_BAND: Band = { from: 3.6, to: 4.2 };
 
@@ -39,6 +42,8 @@ export const magicLinkSchema = z.object({
 
 export const verifySchema = z.object({
   token: z.string().min(1).max(200),
+  // The web logs in with a cookie, the CLI sends false and takes the token
+  cookie: z.boolean().optional(),
 });
 
 export const loginCodeSchema = z.object({ email });

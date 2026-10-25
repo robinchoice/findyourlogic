@@ -129,6 +129,10 @@ export const authRoutes = new Hono<AppEnv>()
       user = await userByEmail(db, link.email);
       if (!user) return c.json({ error: t(c).signupsClosed }, 403);
     }
+    // The CLI has no cookie jar and takes the token like the app
+    if (c.req.valid('json').cookie === false) {
+      return c.json({ user: toUser(user), token: await startSession(db, user.id, APP_SESSION_DAYS) });
+    }
     setSessionCookie(c, await startSession(db, user.id, SESSION_DAYS));
     return c.json({ user: toUser(user) });
   })

@@ -3,12 +3,13 @@
 ## Zweck & Links
 
 - Bubbles (Gruppen, die es schon gibt: Stammtisch, Telegram, Nostr-Gruppe) fragen andere Bubbles an und reden in kleinen Runden nach festen Spielregeln (Sichten, Fragen, Zusammenfassen). Dazu Treffer: Leute mit 3 oder mehr gemeinsamen Merkmalen (Bubbles und Interessen), nur wer auffindbar ist. Login per Magic Link oder Nostr (eigener Dialog in `apps/web/src/lib/nostr.svelte.ts`: Browser-Erweiterung per NIP-07, Signer-App per NIP-46 mit nostrconnect-QR).
+- CLI in `apps/cli` (README, „CLI“): `login` per Mail-Code oder Login-Link, `whoami`, `logout`, `requests`. Den Nostr-Login hat nur das Web.
 - Live: https://findyourlogic.pleasance.org, Coolify-Projekt `pleasance-findyourlogic`, Ressource `findyourlogic`.
 - Vorlage: `robinchoice/starter`. Mockups (Fassung 2) waren die Vorlage für Version 1.
 
 ## Checks
 
-`bun run check && bun run test && bun run build`. Die Browser-Tests bauen das Web vor dem Start und testen den Produktions-Build. API und Web laufen auf eigenen Ports (31100, 31101), unter dem ephemeren Linux-Portbereich (32768–60999). Testet ein anderer Worktree gleichzeitig, mit anderen Ports unter 32768 aufrufen: `TEST_API_PORT=31102 TEST_WEB_PORT=31103 bun run test`.
+`bun run check && bun run test && bun run build`. `test` testet auch die CLI gegen die API, `build` baut Web und CLI-Datei (`apps/cli/build/findyourlogic`). Die Browser-Tests bauen das Web vor dem Start und testen den Produktions-Build. API und Web laufen auf eigenen Ports (31100, 31101), unter dem ephemeren Linux-Portbereich (32768–60999). Testet ein anderer Worktree gleichzeitig, mit anderen Ports unter 32768 aufrufen: `TEST_API_PORT=31102 TEST_WEB_PORT=31103 bun run test`.
 
 ## Deploy
 
@@ -30,6 +31,8 @@
 
 - Keine App: `apps/mobile`, `mobile.yml` und `standards/` sind gelöscht.
 - CSP weiter als im starter: `connect-src` mit den zwei Relays für den Nostr-Login per Signer-App.
+- CLI ohne ALTCHA: Dieses Repo hat kein ALTCHA vor Login-Mails, die CLI fordert den Code wie das Web direkt an. Statt `settings` zeigt sie als Beispielbefehl `requests`, das Kern-Feature.
+- CLI-Tests laufen wie die API-Tests gegen `DATABASE_URL` mit frischen Adressen, die isolierte Test-Datenbank aus starter gibt es hier noch nicht.
 - `z.config({ jitless: true })` in `packages/shared`: zod prüft sonst per `eval`, ob es Parser kompilieren darf, und die CSP meldet das als Fehler.
 
 ## Konventionen
@@ -38,7 +41,8 @@ Stack und Aufbau: siehe README.md. Gestaltung: siehe DESIGN.md.
 
 - Neue Tabelle: `packages/db/src/schema.ts` ändern, `bun run db:generate`. Die Migration läuft beim nächsten API-Start, `migrateDb` lässt mehrere Instanzen nacheinander migrieren. Jede Migration muss mit dem noch laufenden alten Code funktionieren: Spalten nullable oder mit Default hinzufügen, Umbenennen und Löschen erst im Deploy danach. Nichts von Hand in der Datenbank ändern.
 - Neue Route: Datei in `apps/api/src/routes`, in `app.ts` einhängen. `requireAuth` für eingeloggte Nutzer (danach `c.get('user')`), `validJson(schema)` mit dem Schema aus `packages/shared`.
-- Jeder sichtbare Text steht auf Deutsch und Englisch: für Web und API in `packages/shared/src/messages.ts`, für die App in `lib/core/messages.dart`. Fehlt eine Sprache, schlagen `bun run check` bzw. `flutter analyze` fehl. Im Web `t()` aus `$lib/i18n`, in der API `t(c)` aus `lib/i18n.ts`, in der App `ref.watch(messagesProvider)`. Eigene zod-Meldungen sind Schlüssel aus `messages.ts`. Umgeschaltet wird im `PleasanceFooter`.
+- Jeder sichtbare Text steht auf Deutsch und Englisch: für Web, API und CLI in `packages/shared/src/messages.ts`, für die App in `lib/core/messages.dart`. Fehlt eine Sprache, schlagen `bun run check` bzw. `flutter analyze` fehl. Im Web `t()` aus `$lib/i18n`, in der API `t(c)` aus `lib/i18n.ts`, in der App `ref.watch(messagesProvider)`. Eigene zod-Meldungen sind Schlüssel aus `messages.ts`. Umgeschaltet wird im `PleasanceFooter`.
+- CLI (README, „CLI“): Jedes Kern-Feature bekommt im selben Zug einen Befehl in `apps/cli/src/commands` nach dem Beispiel `requests.ts`, mit Text und `--json` und einem Test in `cli.test.ts`. Die CLI spricht nur mit der HTTP-API, nie mit der Datenbank, so gelten Rechte, Rate-Limits und die Registrierungssperre. Agenten melden sie nur mit admin@pleasance.org an (`login-link findyourlogic | findyourlogic login --link -`), nie mit Kundenkonten.
 - Fehler antworten immer als `{ error: string }` mit einem Text aus `t(c)`, also in der Sprache, die der Client per `Accept-Language` schickt. Das Web zeigt ihn als Toast.
 - Alles, was Mails verschickt oder Geheimnisse prüft, bekommt ein `rateLimit` aus `lib/rate-limit.ts`. Die Zähler liegen in Postgres und gelten für alle API-Instanzen.
 - Mails über `sendMail` aus `lib/mail.ts`.
