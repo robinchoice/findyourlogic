@@ -70,7 +70,7 @@ export const rateLimits = pgTable('rate_limits', {
 });
 
 // Bug reports and ideas from the feedback button, also mailed and filed as
-// GitHub issues. The random id is the key of the screenshot URL.
+// GitHub issues. Only admins fetch the screenshot by its id.
 export const feedback = pgTable('feedback', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),

@@ -92,3 +92,19 @@ export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
   c.set('user', user);
   await next();
 });
+
+// ADMIN_EMAILS, read on every call so the tests can switch it. Savor's test
+// account admin@pleasance.org never goes in there.
+export function isAdmin(user: User) {
+  const admins = (process.env.ADMIN_EMAILS ?? '').split(',').map((entry) => entry.trim().toLowerCase());
+  return !!user.email && admins.includes(user.email.toLowerCase());
+}
+
+// Logs in like requireAuth, then asks for ADMIN_EMAILS: 401 without a session, 403 for everyone else
+export const requireAdmin = createMiddleware<AppEnv>(async (c, next) => {
+  const user = await currentUser(c);
+  if (!user) return c.json({ error: t(c).notLoggedIn }, 401);
+  if (!isAdmin(user)) return c.json({ error: t(c).adminOnly }, 403);
+  c.set('user', user);
+  await next();
+});
