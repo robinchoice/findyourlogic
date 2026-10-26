@@ -4,7 +4,7 @@ Bubbles fragen Bubbles, und Leute finden sich über ihre Schnittmengen. Live: ht
 
 ## Vorlage
 
-Vorlage für Web- und Mobile-Prototypen: Bun, Hono, SvelteKit, Drizzle und Postgres, dazu eine CLI und optional eine Flutter-App gegen dieselbe API. Deutsch und Englisch mit Umschalter in der Fußzeile, Login per Magic Link (Web) oder Code (App), Feedback-Knopf mit Screenshot, Link-Vorschau, Mail über SMTP, Rate-Limit, Security-Header mit CSP, GlitchTip, PostHog, Healthcheck, CI mit Browser-Test, Dependabot, Coolify-Deploy und Screenshots nach jedem Deploy sind fertig eingebaut.
+Vorlage für Web- und Mobile-Prototypen: Bun, Hono, SvelteKit, Drizzle und Postgres, dazu eine CLI und optional eine Flutter-App gegen dieselbe API. Deutsch und Englisch mit Umschalter in der Fußzeile, Login per Magic Link (Web) oder Code (App), Feedback-Knopf mit Screenshot, ALTCHA vor Login-Mails, Link-Vorschau, Mail über SMTP, Rate-Limit, Security-Header mit CSP, GlitchTip, PostHog, Healthcheck, CI mit Browser-Test, Dependabot, Coolify-Deploy und Screenshots nach jedem Deploy sind fertig eingebaut.
 
 ## Neues Projekt
 
@@ -81,6 +81,16 @@ Nach jedem erfolgreichen Deploy fotografiert der CI-Job `screenshots` die Live-S
 - Fotografiert wird die GitHub-Variable `API_URL` (ab 1.0 die eigene Domain), ohne sie `https://<repo>.pleasance.org`. Aufrufe an `/ingest` blockt das Skript, PostHog zählt sie nicht.
 - Lokal: `bun run screenshots [url]` in `apps/web`, ohne URL gegen `bun run dev`.
 - Nach einem Deploy liegt oft ein Bot-Commit auf `main`, also vor dem nächsten Push holen.
+
+## ALTCHA
+
+Öffentliche Formulare, die Mails verschicken oder Daten anlegen, schützt [ALTCHA](https://altcha.org) (MIT, Proof of Work, ohne Cookies und ohne Drittanbieter): Vor dem Absenden rechnet der Browser oder die CLI eine kleine Aufgabe, die API prüft die Lösung. Hier gilt das für `/auth/magic-link` und `/auth/code`. Der Nostr-Login verschickt keine Mail und braucht es nicht. Es ergänzt die Rate-Limits: Jede Anfrage kostet Rechenzeit, und ohne Lösung kann niemand die Limits einer fremden Adresse aufbrauchen.
+
+- API: `GET /api/v1/altcha` gibt eine Challenge aus (`altcha-lib`, PBKDF2/SHA-256, 10 Minuten gültig). `requireAltcha` aus `lib/altcha.ts` steht vor `validJson`, liest das Feld `altcha` im JSON-Body und antwortet sonst mit 403 und `altchaFailed`. Jede Lösung gilt einmal, das merkt sich ein Zähler in `rate_limits`. Den HMAC-Schlüssel erzeugt die API beim ersten Aufruf und legt ihn in `server_secrets` ab, alle Instanzen teilen ihn, eine Env-Variable braucht es nicht.
+- Web: `Altcha.svelte` ins Formular, mit `bind:payload` und `bind:this`. Das erste Absenden startet die Rechnung, danach schickt das Widget das Formular selbst noch einmal ab. Der Handler übergeht deshalb Absenden ohne Payload und ruft nach einem Fehler `reset()` auf, Vorbild `routes/login/+page.svelte`. Das Widget kommt aus `altcha/external` mit eigener CSS- und Worker-Datei, so bleibt die CSP ohne Ausnahme. Seine Texte bringt es auf Deutsch und Englisch mit, die Sprache folgt dem Umschalter. Das Sammeln von Zeiger- und Scrolldaten (`humanInteractionSignature`) ist aus.
+- CLI: `login` holt eine Challenge und löst sie mit `altcha-lib`, bevor sie den Code anfordert.
+- Schwierigkeit: `COST` und Zählerbereich in `apps/api/src/lib/altcha.ts`. Auf einem Laptop rechnet der Browser 0,1–0,5 s, das Widget zeigt mindestens 0,5 s. Nur erhöhen, wenn Bots durchkommen.
+- Tests: `apps/api/src/testing.ts` löst Challenges für die API-Tests, der Browser-Test rechnet mit dem echten Widget.
 
 ## Login in der Savor-Vorschau
 

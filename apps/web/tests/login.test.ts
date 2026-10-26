@@ -23,11 +23,20 @@ async function openHydrated(page: Page, path: string) {
   await Promise.all([page.waitForResponse('**/api/v1/auth/me'), page.goto(path)]);
 }
 
-test('the login form sends a magic link', async ({ page }) => {
+// The widget solves on submit. Each solution counts once, so another address
+// needs a new one.
+test('the login form sends a magic link after the bot check', async ({ page }) => {
   await openHydrated(page, '/login');
-  await page.getByLabel('E-Mail').fill(freshEmail());
-  await page.getByRole('button', { name: 'Link schicken' }).click();
-  await expect(page.getByText('Check deine E-Mails')).toBeVisible();
+  for (let i = 0; i < 2; i++) {
+    if (i) await page.getByRole('button', { name: 'Andere Adresse' }).click();
+    await page.getByLabel('E-Mail').fill(freshEmail());
+    const [response] = await Promise.all([
+      page.waitForResponse('**/api/v1/auth/magic-link'),
+      page.getByRole('button', { name: 'Link schicken' }).click(),
+    ]);
+    expect(response.request().postDataJSON().altcha).toEqual(expect.any(String));
+    await expect(page.getByText('Check deine E-Mails')).toBeVisible();
+  }
 });
 
 test('the language button switches to English and keeps it', async ({ page }) => {

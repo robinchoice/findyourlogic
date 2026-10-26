@@ -5,6 +5,7 @@ import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
 import { t } from './lib/i18n';
 import { captureException } from './monitoring';
+import { altchaRoutes } from './routes/altcha';
 import { authRoutes } from './routes/auth';
 import { bubbleRoutes } from './routes/bubbles';
 import { feedbackRoutes } from './routes/feedback';
@@ -37,6 +38,7 @@ export function createApp(db: Database) {
         return c.json({ status: 'ok', revision: process.env.APP_VERSION || 'dev' });
       })
       .basePath('/api/v1')
+      .route('/altcha', altchaRoutes)
       .route('/auth', authRoutes)
       .route('/feedback', feedbackRoutes)
       .route('/me', meRoutes)

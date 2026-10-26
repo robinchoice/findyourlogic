@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { auth, checkAuth, nostrLogin, sendMagicLink } from '$lib/auth.svelte';
+  import Altcha from '$lib/components/Altcha.svelte';
   import Button from '$lib/components/Button.svelte';
   import Hero from '$lib/components/Hero.svelte';
   import NostrDialog from '$lib/components/NostrDialog.svelte';
@@ -14,6 +15,8 @@
   const next = safeNextPath(page.url.searchParams.get('next'));
 
   let email = $state('');
+  let altcha = $state('');
+  let altchaWidget = $state<Altcha>();
   let sent = $state(false);
   let loading = $state(false);
   let signing = $state(false);
@@ -25,12 +28,16 @@
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
+    if (!altcha) return;
     loading = true;
     try {
-      await sendMagicLink(email, next);
+      await sendMagicLink(email, next, altcha);
       sent = true;
+      // Used up: another address gets a new widget that solves again
+      altcha = '';
     } catch {
       // The API client already shows the error as a toast
+      altchaWidget?.reset();
     } finally {
       loading = false;
     }
@@ -80,6 +87,7 @@
         placeholder={t().emailForLink}
         bind:value={email}
       />
+      <Altcha bind:payload={altcha} bind:this={altchaWidget} />
       <Button type="submit" variant="secondary" block {loading}>{t().sendLink}</Button>
     </form>
   {/if}

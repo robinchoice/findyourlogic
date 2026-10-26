@@ -7,6 +7,7 @@ import type { Tx } from './lib/db';
 import * as nostr from './lib/nostr';
 import { LOGIN_KIND } from './lib/nostr';
 import { generateToken, hashToken } from './middleware/auth';
+import { altchaPayload } from './testing';
 
 // Runs against DATABASE_URL and only adds its own rows, see auth.test.ts
 const db = createDb(process.env.DATABASE_URL!);
@@ -505,7 +506,9 @@ test('closed signups keep new people out and let existing accounts in', async ()
   process.env.SIGNUPS_OPEN = 'false';
   try {
     const stranger = `test-${crypto.randomUUID()}@example.com`;
-    expect((await call('POST', '/auth/magic-link', null, { email: stranger }))[0]).toBe(200);
+    expect(
+      (await call('POST', '/auth/magic-link', null, { email: stranger, altcha: await altchaPayload(app) }))[0],
+    ).toBe(200);
     const mailed = () => log.mock.calls.some((args) => String(args[0]).startsWith(`[mail] To ${stranger}`));
     expect(mailed()).toBe(false);
     expect((await call('POST', '/auth/nostr', null, { event: await nostrEvent(generateSecretKey()) }))[0]).toBe(403);
@@ -513,7 +516,7 @@ test('closed signups keep new people out and let existing accounts in', async ()
 
     const known = `test-${crypto.randomUUID()}@example.com`;
     await db.insert(users).values({ email: known, name: 'Known' });
-    await call('POST', '/auth/magic-link', null, { email: known });
+    await call('POST', '/auth/magic-link', null, { email: known, altcha: await altchaPayload(app) });
     const token = log.mock.calls
       .map((args) => String(args[0]))
       .findLast((line) => line.startsWith(`[mail] To ${known}`))!

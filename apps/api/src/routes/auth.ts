@@ -12,6 +12,7 @@ import {
 import { and, eq, gt, isNull, lt, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { deleteCookie } from 'hono/cookie';
+import { requireAltcha } from '../lib/altcha';
 import { t } from '../lib/i18n';
 import { sendConfirmEmail, sendLoginCodeEmail, sendMagicLinkEmail } from '../lib/mail';
 import { npubOf, verifyLoginEvent } from '../lib/nostr';
@@ -78,7 +79,7 @@ async function startSession(db: Database, userId: string, days: number) {
 const npubName = (npub: string) => `${npub.slice(0, 12)}…${npub.slice(-4)}`;
 
 export const authRoutes = new Hono<AppEnv>()
-  .post('/magic-link', validJson(magicLinkSchema), async (c) => {
+  .post('/magic-link', requireAltcha, validJson(magicLinkSchema), async (c) => {
     const { email, next } = c.req.valid('json');
     if (!(await mailsPerIp.hit(c, clientIp(c))) || !(await mailsPerAddress.hit(c, email))) return tooManyRequests(c);
     // Same answer either way, so the form doesn't reveal which addresses have an account
@@ -217,7 +218,7 @@ export const authRoutes = new Hono<AppEnv>()
   })
 
   // Mobile apps: a 6-digit code by mail instead of a link
-  .post('/code', validJson(loginCodeSchema), async (c) => {
+  .post('/code', requireAltcha, validJson(loginCodeSchema), async (c) => {
     const { email } = c.req.valid('json');
     if (!(await mailsPerIp.hit(c, clientIp(c))) || !(await mailsPerAddress.hit(c, email))) return tooManyRequests(c);
     if (!signupsOpen() && !(await userExists(c.get('db'), users.email, email))) return c.json({ ok: true });

@@ -43,6 +43,13 @@
       "when": 1792404977670,
       "tag": "0005_nostr_note",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792972206027,
+      "tag": "0006_server_secrets",
+      "breakpoints": true
     }
   ]
 }

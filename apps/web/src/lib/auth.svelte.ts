@@ -14,8 +14,9 @@ export async function checkAuth() {
   auth.signupsOpen = res.signupsOpen;
 }
 
-export function sendMagicLink(email: string, next: string | null) {
-  return api.post('/auth/magic-link', { email, next: next ?? undefined });
+// altcha: the payload of the widget in the form
+export function sendMagicLink(email: string, next: string | null, altcha: string) {
+  return api.post('/auth/magic-link', { email, next: next ?? undefined, altcha });
 }
 
 // Silent: the verify page shows the error itself
