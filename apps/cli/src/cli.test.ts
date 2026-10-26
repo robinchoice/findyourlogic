@@ -170,6 +170,32 @@ test('a session revoked on the server logs the CLI out', async () => {
   expect((await cli(['requests'])).code).toBe(3);
 });
 
+test('logging in to another API revokes the stored token at its own address', async () => {
+  const seen: (string | null)[] = [];
+  const other = Bun.serve({
+    port: 0,
+    fetch: (req) => {
+      seen.push(req.headers.get('authorization'));
+      return app.fetch(req);
+    },
+  });
+  try {
+    const email = freshEmail();
+    const { cli, token } = await device();
+    expect((await cli(['login', '--link', await loginLink(email)])).code).toBe(0);
+    const oldToken = await token();
+
+    const login = await cli(['login', '--link', await loginLink(email), '--url', other.url.origin]);
+    expect(login.code).toBe(0);
+    expect(seen).not.toContain(`Bearer ${oldToken}`);
+    expect(await sessionCount(oldToken)).toBe(0);
+    expect(await sessionCount(await token())).toBe(1);
+    expect((await cli(['whoami', '--json'], { raw: true })).json()).toMatchObject({ user: { email } });
+  } finally {
+    await other.stop(true);
+  }
+});
+
 test('agents log in with a login link from stdin', async () => {
   const email = freshEmail();
   const link = await loginLink(email);
@@ -263,9 +289,14 @@ test('an unwritable config folder ends with an error, not a crash', async () => 
   const blocked = join(await mkdtemp(join(tmpdir(), 'cli-')), 'file');
   await Bun.write(blocked, '');
   const { cli } = await device({ LANG: 'de_DE.UTF-8', XDG_CONFIG_HOME: blocked });
-  const login = await cli(['login', '--json'], { email: freshEmail() });
+  const email = freshEmail();
+  const login = await cli(['login', '--json'], { email });
   expect(login.code).toBe(1);
   expect(login.json()).toEqual({ error: expect.any(String) });
+  const remaining = await db.$client`
+    select sessions.id from sessions join users on users.id = sessions.user_id where users.email = ${email}
+  `;
+  expect(remaining).toHaveLength(0);
 });
 
 test('the entry point passes the exit code to the shell', async () => {

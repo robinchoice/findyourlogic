@@ -210,14 +210,12 @@ export const bubbleRoutes = new Hono<AppEnv>()
           .where(eq(bubbleMembers.bubbleId, id))
           .orderBy(bubbleMembers.joinedAt)
       : [];
-    const [{ n: rounds }] = (await db
+    const [row] = await db
       .select({ n: count() })
       .from(requests)
-      .where(and(or(eq(requests.fromBubbleId, id), eq(requests.toBubbleId, id)), isNotNull(requests.acceptedAt)))) as [
-      { n: number },
-    ];
+      .where(and(or(eq(requests.fromBubbleId, id), eq(requests.toBubbleId, id)), isNotNull(requests.acceptedAt)));
     return c.json({
-      bubble: { ...bubble, inviteToken: member ? bubble.inviteToken : null, rounds },
+      bubble: { ...bubble, inviteToken: member ? bubble.inviteToken : null, rounds: row!.n },
       member,
       people,
     });
