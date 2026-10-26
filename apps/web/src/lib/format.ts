@@ -1,4 +1,4 @@
-import { BUBBLE_COLORS, type RequestCard, SUPPORTERS_NEEDED } from '@app/shared';
+import { BUBBLE_COLORS, type RequestCard, requestStatus, SUPPORTERS_NEEDED } from '@app/shared';
 import { page } from '$app/state';
 import { t } from './i18n';
 
@@ -14,15 +14,7 @@ export const formatDate = (iso: string, timeZone?: string) =>
     timeZone,
   }).format(new Date(iso));
 
-// Where a request stands, as the cards and the detail page show it
-export function status(r: RequestCard) {
-  const texts = t();
-  if (r.doneAt) return texts.statusDone;
-  if (r.acceptedAt) return texts.statusRunning;
-  if (!r.sentAt) return texts.statusNeedsSupport(SUPPORTERS_NEEDED - r.fromCount, r.from.name);
-  if (!r.toCount) return texts.statusNobodyYet;
-  return texts.statusJoined(r.toCount, r.seats, r.to.name);
-}
+export const status = (r: RequestCard) => requestStatus(r, t());
 
 // Share of the seats taken on the side that is still filling up
 export function progress(r: RequestCard) {

@@ -1,39 +1,9 @@
-import { FORMATS, type Messages, SUPPORTERS_NEEDED } from '@app/shared';
+import { requestCardSchema, requestStatus } from '@app/shared';
 import { z } from 'zod';
 import { type Command, EXIT, Failure, str } from '../command';
 import { SLUG } from '../config';
 
 const TABS = ['mine', 'open', 'sent'] as const;
-
-const bubbleSchema = z.object({ id: z.string(), name: z.string(), color: z.string() });
-
-// RequestCard in @app/shared
-const cardSchema = z.object({
-  id: z.string(),
-  from: bubbleSchema,
-  to: bubbleSchema,
-  question: z.string(),
-  format: z.enum(FORMATS),
-  place: z.string(),
-  startsAt: z.string(),
-  seats: z.number(),
-  fromCount: z.number(),
-  toCount: z.number(),
-  sentAt: z.string().nullable(),
-  acceptedAt: z.string().nullable(),
-  doneAt: z.string().nullable(),
-  mySide: z.enum(['from', 'to']).nullable(),
-});
-type Card = z.infer<typeof cardSchema>;
-
-// Where a request stands, as the cards in the web show it (apps/web/src/lib/format.ts)
-function status(r: Card, m: Messages) {
-  if (r.doneAt) return m.statusDone;
-  if (r.acceptedAt) return m.statusRunning;
-  if (!r.sentAt) return m.statusNeedsSupport(SUPPORTERS_NEEDED - r.fromCount, r.from.name);
-  if (!r.toCount) return m.statusNobodyYet;
-  return m.statusJoined(r.toCount, r.seats, r.to.name);
-}
 
 // The board the web opens after login, one tab at a time
 export const requests: Command = {
@@ -46,7 +16,7 @@ export const requests: Command = {
     }
     if (!session) throw new Failure(m.notLoggedIn, EXIT.loggedOut);
 
-    const { requests } = await api.get(`/requests?tab=${tab}`, z.object({ requests: z.array(cardSchema) }));
+    const { requests } = await api.get(`/requests?tab=${tab}`, z.object({ requests: z.array(requestCardSchema) }));
     const label = { mine: m.tabMine, open: m.tabOpen, sent: m.tabSent }[tab];
     const empty = { mine: m.emptyMine, open: m.emptyOpen, sent: m.emptySent }[tab];
     const date = new Intl.DateTimeFormat(locale, {
@@ -60,7 +30,7 @@ export const requests: Command = {
       [
         m.quoted(r.question),
         `  ${r.from.name} → ${r.to.name} · ${m.formatShort[r.format]} · ${r.seats} + ${r.seats}`,
-        `  ${date.format(new Date(r.startsAt))} · ${status(r, m)}${r.mySide ? ` · ${m.youAreIn}` : ''}`,
+        `  ${date.format(new Date(r.startsAt))} · ${requestStatus(r, m)}${r.mySide ? ` · ${m.youAreIn}` : ''}`,
         `  ${r.id}`,
       ].join('\n'),
     );

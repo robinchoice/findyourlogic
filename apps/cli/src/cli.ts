@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import { APP_NAME, type Messages, messages, pickLocale } from '@app/shared';
 import { createClient } from './client';
-import { type Command, EXIT, Failure, type Io, type Result } from './command';
+import { type Command, EXIT, Failure, type Io, type Result, str } from './command';
 import { auth } from './commands/auth';
 import { requests } from './commands/requests';
 import { DEFAULT_URL, loadSession, SLUG } from './config';
@@ -59,8 +59,9 @@ export async function run(args: string[], io: Io): Promise<number> {
     const command = Object.hasOwn(commands, name) ? commands[name] : undefined;
     if (name && !command && !name.startsWith('-')) throw new Failure(m.cliUnknownCommand(name, SLUG), EXIT.usage);
     const { values } = parseArgs({ args: command ? rest : args, options: { ...globalOptions, ...command?.options } });
-    if (typeof values.lang === 'string') {
-      locale = pickLocale(values.lang);
+    const lang = str(values.lang);
+    if (lang !== undefined) {
+      locale = pickLocale(lang);
       m = messages[locale];
     }
     json = values.json === true;
@@ -68,7 +69,7 @@ export async function run(args: string[], io: Io): Promise<number> {
 
     // The address of the last login, unless --url names another
     const stored = await loadSession(io.env);
-    const url = (typeof values.url === 'string' ? values.url : (stored?.url ?? DEFAULT_URL)).replace(/\/+$/, '');
+    const url = (str(values.url) ?? stored?.url ?? DEFAULT_URL).replace(/\/+$/, '');
     const session = stored?.url === url ? stored : null;
     const api = createClient(url, session?.token, locale, m);
     const result = command && !values.help ? await command.run({ api, url, session, values, m, locale, io }) : help(m);

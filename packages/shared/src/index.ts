@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Band } from './band';
+import type { Messages } from './messages';
 
 export * from './band';
 export * from './messages';
@@ -20,16 +21,17 @@ export const APP_BAND: Band = { from: 3.6, to: 4.2 };
 // the bug button waits for the test mode switch, see testMode in the web's feedback.svelte.ts.
 export const LIVE = false;
 
-export type User = {
-  id: string;
+export const userSchema = z.object({
+  id: z.string(),
   // An account has an email address, a Nostr key or both
-  email: string | null;
-  npub: string | null;
-  name: string;
+  email: z.string().nullable(),
+  npub: z.string().nullable(),
+  name: z.string(),
   // Opt-in, see Art. 9 GDPR: bubbles can reveal political opinions
-  discoverable: boolean;
-  onboarded: boolean;
-};
+  discoverable: z.boolean(),
+  onboarded: z.boolean(),
+});
+export type User = z.infer<typeof userSchema>;
 
 // Custom error messages are keys of messages.ts, the API translates them.
 const email = z.string().trim().toLowerCase().pipe(z.email('invalidEmail'));
@@ -193,7 +195,8 @@ export const matchBubbleSchema = z.object({
   traits: z.array(z.string().max(100)).min(MIN_SHARED).max(20),
 });
 
-export type BubbleRef = { id: string; name: string; color: string };
+const bubbleRefSchema = z.object({ id: z.string(), name: z.string(), color: z.string() });
+export type BubbleRef = z.infer<typeof bubbleRefSchema>;
 
 export type MyBubble = BubbleRef & {
   description: string;
@@ -206,23 +209,33 @@ export type MyBubble = BubbleRef & {
 
 export type Invitation = BubbleRef & { description: string; invitedBy: string | null };
 
-export type RequestCard = {
-  id: string;
-  from: BubbleRef;
-  to: BubbleRef;
-  question: string;
-  format: Format;
-  place: string;
-  startsAt: string;
-  seats: number;
-  fromCount: number;
-  toCount: number;
-  sentAt: string | null;
-  acceptedAt: string | null;
-  doneAt: string | null;
+export const requestCardSchema = z.object({
+  id: z.string(),
+  from: bubbleRefSchema,
+  to: bubbleRefSchema,
+  question: z.string(),
+  format: z.enum(FORMATS),
+  place: z.string(),
+  startsAt: z.string(),
+  seats: z.number(),
+  fromCount: z.number(),
+  toCount: z.number(),
+  sentAt: z.string().nullable(),
+  acceptedAt: z.string().nullable(),
+  doneAt: z.string().nullable(),
   // The current user's side, if they joined
-  mySide: Side | null;
-};
+  mySide: z.enum(['from', 'to']).nullable(),
+});
+export type RequestCard = z.infer<typeof requestCardSchema>;
+
+// Where a request stands, as the cards and the detail page show it
+export function requestStatus(r: RequestCard, m: Messages) {
+  if (r.doneAt) return m.statusDone;
+  if (r.acceptedAt) return m.statusRunning;
+  if (!r.sentAt) return m.statusNeedsSupport(SUPPORTERS_NEEDED - r.fromCount, r.from.name);
+  if (!r.toCount) return m.statusNobodyYet;
+  return m.statusJoined(r.toCount, r.seats, r.to.name);
+}
 
 export type Person = { id: string; name: string };
 

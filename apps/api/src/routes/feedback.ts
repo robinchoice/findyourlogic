@@ -135,7 +135,7 @@ export const feedbackRoutes = new Hono<AppEnv>()
     return c.json({ ok: true });
   })
 
-  .get('/:id/screenshot', requireAdmin, async (c) => {
+  .get('/:id/screenshot', requireAuth, requireAdmin, async (c) => {
     const id = c.req.param('id');
     const [row] = isUuid(id)
       ? await c.get('db').select({ screenshot: feedback.screenshot }).from(feedback).where(eq(feedback.id, id))
