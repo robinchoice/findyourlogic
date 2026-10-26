@@ -1,8 +1,9 @@
+import './env';
 import './monitoring';
 import { createDb, migrateDb } from '@app/db';
 import { createApp } from './app';
 
-const db = createDb(process.env.DATABASE_URL!);
+const db = createDb(process.env.DATABASE_URL);
 let stopping = false;
 
 // Takes no new requests, lets running ones finish, then closes the pool
@@ -20,7 +21,7 @@ process.on('SIGINT', shutdown);
 
 const startup = (async () => {
   // A failed migration aborts the boot.
-  await migrateDb(process.env.DATABASE_URL!);
+  await migrateDb(process.env.DATABASE_URL);
   console.log('[boot] Migrations up to date.');
 
   const server = Bun.serve({

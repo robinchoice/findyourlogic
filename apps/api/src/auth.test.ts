@@ -132,7 +132,7 @@ test('requests without ALTCHA leave the rate limits of an address alone', async 
 
 test('a second login reuses the account', async () => {
   const email = freshEmail();
-  const ids = [];
+  const ids: string[] = [];
   for (let i = 0; i < 2; i++) {
     await post('/auth/magic-link', { email });
     ids.push((await body(post('/auth/verify', { token: lastMailedToken() }))).user.id);
@@ -172,7 +172,7 @@ test('protected routes need a session', async () => {
 
 test('login mails per address are rate limited', async () => {
   const email = freshEmail();
-  const statuses = [];
+  const statuses: number[] = [];
   for (let i = 0; i < 6; i++) statuses.push((await post('/auth/magic-link', { email })).status);
   expect(statuses).toEqual([200, 200, 200, 200, 200, 429]);
 });

@@ -77,7 +77,7 @@ function mail(report: Report, to: string, issueUrl: string | null, screenshot: B
   const sender = `${report.user.name} <${report.user.email ?? report.user.npub}>`;
   return {
     to,
-    replyTo: report.user.email ? sender : undefined,
+    ...(report.user.email && { replyTo: sender }),
     subject: `${report.kind === 'bug' ? 'Bug' : 'Idea'} from ${report.user.name}: ${firstLine(report.message)}`,
     text: [
       report.message,
