@@ -9,7 +9,6 @@ import { LOGIN_KIND } from './lib/nostr';
 import { generateToken, hashToken } from './middleware/auth';
 import { altchaPayload } from './testing';
 
-// Runs against DATABASE_URL and only adds its own rows, see auth.test.ts
 const db = createDb(process.env.DATABASE_URL!);
 const app = createApp(db);
 const log = spyOn(console, 'log');

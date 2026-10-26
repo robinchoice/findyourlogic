@@ -10,8 +10,7 @@ import { generateToken, hashToken } from '../../api/src/middleware/auth';
 import { run } from './cli';
 import { SLUG, sessionFile } from './config';
 
-// The CLI runs in-process against the real API on a free port. Runs against
-// DATABASE_URL like the API tests and only adds rows with fresh addresses.
+// The CLI runs in-process against the real API on a free port.
 const db = createDb(process.env.DATABASE_URL!);
 const app = createApp(db);
 // Request log and mails stay out of the test output

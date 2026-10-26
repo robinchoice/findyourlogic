@@ -33,7 +33,6 @@
 - Keine App: `apps/mobile`, `mobile.yml` und `standards/` sind gelöscht.
 - CSP weiter als im starter: `connect-src` mit den zwei Relays für den Nostr-Login per Signer-App.
 - CLI: Statt `settings` zeigt sie als Beispielbefehl `requests`, das Kern-Feature.
-- CLI-Tests laufen wie die API-Tests gegen `DATABASE_URL` mit frischen Adressen, die isolierte Test-Datenbank aus starter gibt es hier noch nicht.
 - `z.config({ jitless: true })` in `packages/shared`: zod prüft sonst per `eval`, ob es Parser kompilieren darf, und die CSP meldet das als Fehler.
 
 ## Konventionen
