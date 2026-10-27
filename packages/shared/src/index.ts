@@ -145,7 +145,8 @@ export type Format = (typeof FORMATS)[number];
 // Views, then only questions, then each side sums up the other's view
 export const PHASES = ['views', 'questions', 'summary'] as const;
 export type Phase = (typeof PHASES)[number];
-export type Side = 'from' | 'to';
+export const SIDES = ['from', 'to'] as const;
+export type Side = (typeof SIDES)[number];
 
 // Free-text interests match case-insensitively
 export const interestKey = (label: string) => label.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -224,7 +225,7 @@ export const requestCardSchema = z.object({
   acceptedAt: z.string().nullable(),
   doneAt: z.string().nullable(),
   // The current user's side, if they joined
-  mySide: z.enum(['from', 'to']).nullable(),
+  mySide: z.enum(SIDES).nullable(),
 });
 export type RequestCard = z.infer<typeof requestCardSchema>;
 

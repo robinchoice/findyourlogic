@@ -100,6 +100,7 @@ export function isAdmin(user: User) {
   return !!user.email && admins.includes(user.email.toLowerCase());
 }
 
+// Runs after requireAuth: 403 for everyone not in ADMIN_EMAILS.
 export const requireAdmin = createMiddleware<AppEnv>(async (c, next) => {
   if (!isAdmin(c.get('user'))) return c.json({ error: t(c).adminOnly }, 403);
   await next();
